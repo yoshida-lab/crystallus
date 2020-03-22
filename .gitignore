@@ -20,3 +20,4 @@ Cargo.lock
 *.pyc
 __pycache__/
 results/
+.ipynb_checkpoints/
