@@ -1,0 +1,120 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'libcrystal'",
+      "cargo": {
+        "args": ["test", "--no-run", "--lib", "--package=libcrystal", "--features=intel-mkl"],
+        "filter": {
+          "name": "libcrystal",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'libcrystal'",
+      "cargo": {
+        "args": ["build", "--bin=libcrystal", "--package=libcrystal"],
+        "filter": {
+          "name": "libcrystal",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in executable 'libcrystal'",
+      "cargo": {
+        "args": ["test", "--no-run", "--bin=libcrystal", "--package=libcrystal"],
+        "filter": {
+          "name": "libcrystal",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug example 'gen_positions'",
+      "cargo": {
+        "args": ["build", "--example=gen_positions", "--package=libcrystal"],
+        "filter": {
+          "name": "gen_positions",
+          "kind": "example"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in example 'gen_positions'",
+      "cargo": {
+        "args": ["test", "--no-run", "--example=gen_positions", "--package=libcrystal"],
+        "filter": {
+          "name": "gen_positions",
+          "kind": "example"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug benchmark 'wyckoff_gen_one'",
+      "cargo": {
+        "args": ["test", "--no-run", "--bench=wyckoff_gen_one", "--package=libcrystal"],
+        "filter": {
+          "name": "wyckoff_gen_one",
+          "kind": "bench"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug benchmark 'wyckoff_gen_many'",
+      "cargo": {
+        "args": ["test", "--no-run", "--bench=wyckoff_gen_many", "--package=libcrystal"],
+        "filter": {
+          "name": "wyckoff_gen_many",
+          "kind": "bench"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'crystallus'",
+      "cargo": {
+        "args": ["test", "--no-run", "--lib", "--package=crystallus"],
+        "filter": {
+          "name": "crystallus",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

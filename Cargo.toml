@@ -1,0 +1,51 @@
+[package]
+name = 'crystallus'
+version = '0.1.2'
+authors = ['tsumina <liu.chang.1865@gmail.com>']
+homepage = 'https://github.com/yoshida-lab/crystallus'
+repository = 'https://github.com/yoshida-lab/crystallus'
+license = 'BSD-3'
+edition = '2018'
+publish = false
+[package.metadata.maturin]
+maintainer = 'tsumina <liu.chang.1865@gmail.com>'
+requires-dist = [
+    'peewee>=3.13.0',
+]
+classifier = [
+    'Development Status :: 4 - Beta',
+    'Intended Audience :: Science/Research',
+    'License :: OSI Approved :: BSD License',
+    'Natural Language :: English',
+    'Operating System :: Microsoft :: Windows',
+    'Operating System :: MacOS',
+    'Operating System :: Unix',
+    'Programming Language :: Python :: 3.6',
+    'Programming Language :: Python :: 3.7',
+    'Programming Language :: Python :: 3.8',
+]
+requires-python = '>=3.5'
+
+[workspace]
+members = ['libcrystal']
+
+[lib]
+name = 'crystallus'
+crate-type = ['cdylib']
+
+[dependencies]
+itertools = '^0.9.0'
+rayon = '^1.3.0'
+
+[dependencies.pyo3]
+git = 'https://github.com/PyO3/pyo3'
+branch = 'master'
+
+[dependencies.libcrystal]
+path = 'libcrystal'
+version = '^0.1.0'
+features = []
+
+[features]
+extension-module = ['pyo3/extension-module']
+default = ['extension-module']

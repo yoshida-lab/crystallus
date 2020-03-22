@@ -1,0 +1,7 @@
+name: crystallus
+dependencies:
+  - mkl
+  - mkl-service
+  - pip
+  - pip:
+      - peewee>=3.13.0

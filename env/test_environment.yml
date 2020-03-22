@@ -1,0 +1,9 @@
+name: test
+dependencies:
+  - numpy
+  - pytest
+  - pytest-benchmark
+  - pip
+  - pip:
+      - maturin
+      - peewee>=3.13.0
