@@ -1,4 +1,5 @@
 from typing import Dict, List, Tuple
+from ._util import dangerwrap
 from .crystallus import WyckoffCfgGenerator as _WYG
 
 
@@ -40,13 +41,22 @@ class WyckoffCfgGenerator(object):
     def gen_one(self, spacegroup_num: int):
         return self._wyg.gen_one(spacegroup_num)
 
-    def gen_many(self, size: int, *spacegroup_num: int):
+    def gen_many(
+        self,
+        size: int,
+        *spacegroup_num: int,
+        iterative: bool = False,
+    ):
         """Generate probale configurations
 
         Parameters
         ----------
         size : int
             How many times for trying.
+        iterative: bool
+            Running like a iterator. Instead of return results until all done,
+            Results will be returned when generation of each spacegroup has done.
+            By default, False
         spacegroup_num: int
             The spacegroup numbers.
 
@@ -59,27 +69,11 @@ class WyckoffCfgGenerator(object):
             spacegroup number as key. wy_cfgs will be formated as
             {<element 1>: (<Wyckoff letter>, <Wyckoff letter>, ...), <element 2>: (...), ...}.
         """
-        return self._wyg.gen_many(size, *spacegroup_num)
-
-    def __call__(self, size: int, *spacegroup_num: int):
-        """Generate probale configurations iteratively.
-
-        Parameters
-        ----------
-        size : int
-            How many times for trying.
-        spacegroup_num: int
-            The spacegroup numbers.
-
-        Yields
-        ------
-        Tuple[int, List[Dict]]
-            A tuple contains spacegroup number and it's corresponding Wyckoff configurations.
-            Wyckoff configurations which will be formated as
-            {<element 1>: (<Wyckoff letter>, <Wyckoff letter>, ...), <element 2>: (...), ...}
-        """
-        for sp_num in spacegroup_num:
-            yield sp_num, self._wyg.gen_many(size, sp_num)
+        if iterative:
+            for sp_num in spacegroup_num:
+                yield sp_num, self._wyg.gen_many(size, sp_num)
+        else:
+            return self._wyg.gen_many(size, *spacegroup_num)
 
     def __repr__(self):
         return f"WyckoffCfgGenerator(\

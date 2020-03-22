@@ -3,6 +3,7 @@
 # license that can be found in the LICENSE file.
 
 from .crystallus import CrystalGenerator as _CG
+from ._util import dangerwrap
 from typing import Tuple, Dict
 
 __all__ = ["CrystalGenerator"]
@@ -11,16 +12,16 @@ __all__ = ["CrystalGenerator"]
 class CrystalGenerator(object):
 
     def __init__(
-            self,
-            spacegroup_num: int,
-            estimated_volume: float,
-            estimated_variance: float,
-            *,
-            min_distance_tolerance: float = 0.15,
-            angle_range: Tuple[float, float] = (30., 150.),
-            angle_tolerance: float = 20.,
-            max_recurrent: int = 5_000,
-            n_jobs: int = -1,
+        self,
+        spacegroup_num: int,
+        estimated_volume: float,
+        estimated_variance: float,
+        *,
+        min_distance_tolerance: float = 0.15,
+        angle_range: Tuple[float, float] = (30., 150.),
+        angle_tolerance: float = 20.,
+        max_recurrent: int = 5_000,
+        n_jobs: int = -1,
     ):
         """A generator to generate crystal structures.
 
@@ -114,15 +115,23 @@ class CrystalGenerator(object):
         """
         return self._cg.gen_one(**cfg)
 
-    def gen_many(self, size: int, *cfgs: Dict[str, Tuple[str]], **cfg: Dict[str, Tuple[str]]):
+    def gen_many(self,
+                 size: int,
+                 *cfgs: Dict[str, Tuple[str]],
+                 iterative: bool = False,
+                 **cfg: Dict[str, Tuple[str]]):
         """Generate structures with given configration set(s) and size.
 
         Parameters
         ----------
-        size: int
-            Generation size for each configration set.
         *cfgs: Dict[str, Tuple[str]]
             A tuple with configuration set ``cfg``s.
+        size: int
+            Generation size for each configration set. By default, 1
+        iterative: bool
+            Running like a iterator. Instead of return results until all done,
+            Results will be returned when generation of each configration has done.
+            This only works when length of ``cfgs`` greater than 0. By default, False
         **cfg: Dict[str, Tuple[str]]
             Configuration set with format like: {"Li": ("a", "c"), "O": ("i",)},
             where "Li" is an available element symbol and ("a", "c") is a tuple
@@ -135,30 +144,6 @@ class CrystalGenerator(object):
             Structure information contains ``spacegroup_mun: int``,
             ``volume: float``, ``lattice: list``, ``wyckoff_letters: list``,
             and ``coords: list``.
-        """
-        assert size >= 1, 'size must be greater than 1'
-        if len(cfgs) != 0 and len(cfg) != 0:
-            raise ValueError('`cfgs` and `cfg are exclusive')
-
-        if len(cfg) != 0:
-            return self._cg.gen_many(size, cfg)
-        if len(cfgs) != 0:
-            return self._cg.gen_many(size, *cfgs)
-
-        raise ValueError('need configration dicts as `cfgs` or dict as `cfg')
-
-    def __call__(self, size: int, *cfgs: Dict[str, Tuple[str]]):
-        """Generate structures with given configration set(s) and size.
-
-        Parameters
-        ----------
-        size: int
-            Generation size for each configration set.
-        *cfgs: Dict[str, Tuple[str]]
-            A tuple with configuration sets. A Configuration set must be formated
-            like: {"Li": ("a", "c"), "O": ("i",)}, where "Li" is an available
-            element symbol and ("a", "c") is a tuple which contains coresponding
-            Wyckoff letters. For convenience, dict will be sorted by keys.
 
         Yields
         ------
@@ -167,8 +152,20 @@ class CrystalGenerator(object):
             ``volume: float``, ``lattice: list``, ``wyckoff_letters: list``,
             and ``coords: list``.
         """
-        for cfg in cfgs:
-            yield self._cg.gen_many(size, cfg)
+        assert size >= 1, 'size must be greater than 1'
+        if len(cfgs) != 0 and len(cfg) != 0:
+            raise ValueError('`cfgs` and `cfg are exclusive')
+
+        if len(cfg) != 0:
+            return dangerwrap(self._cg.gen_many, size, cfg)
+        if len(cfgs) != 0:
+            if iterative:
+                for cfg in cfgs:
+                    yield dangerwrap(self._cg.gen_many, size, cfg)
+            else:
+                return dangerwrap(self._cg.gen_many, size, *cfgs)
+
+        raise ValueError('need configration dicts as `cfgs` or dict as `cfg')
 
     def __repr__(self):
         return f"CrystalGenerator(\
