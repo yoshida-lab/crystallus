@@ -12,22 +12,18 @@ def test_gen_one():
         "lattice", "volume", "spacegroup_num", "species", "wyckoff_letters", "coords"
     }
     assert 940 <= structure['volume'] <= 1060
-    assert np.allclose(structure['lattice'], [
-        pow(structure['volume'], 1 / 3), 0, 0, 0,
-        pow(structure['volume'], 1 / 3), 0, 0, 0,
-        pow(structure['volume'], 1 / 3)
-    ])
+    l = pow(structure['volume'], 1 / 3)
+    assert np.allclose(structure['lattice'], [[l, 0, 0], [0, l, 0], [0, 0, l]])
     assert structure['spacegroup_num'] == 207
     assert structure['species'] == ['C', 'C', 'O', 'O', 'O']
     assert structure['wyckoff_letters'] == ['a', 'b', 'd', 'd', 'd']
-    assert structure['coords'] == [
-        0., 0., 0., 1 / 2, 1 / 2, 1 / 2, 1 / 2, 0., 0., 0., 1 / 2, 0., 0., 0., 1 / 2
-    ]
+    assert structure['coords'] == [[0., 0., 0.], [1 / 2, 1 / 2, 1 / 2], [1 / 2, 0., 0.],
+                                   [0., 1 / 2, 0.], [0., 0., 1 / 2]]
 
 
 def test_gen_many_1():
     cg = CrystalGenerator(207, 1000, 20)
-    structure = cg.gen_many(10, C=('a', 'b'), O=('d'))
+    structure = cg.gen_many(10, {'C': ('a', 'b'), 'O': ('d',)})
 
     assert len(structure) == 10
     assert structure[0]['wyckoff_letters'] == structure[2]['wyckoff_letters']
@@ -39,8 +35,14 @@ def test_gen_many_1():
 def test_gen_many_2():
     cg = CrystalGenerator(207, 1000, 20)
     cfgs = (
-        dict(C=('a', 'b'), O=('d')),
-        dict(O=('d'), C=('b', 'a')),
+        {
+            'C': ('a', 'b'),
+            'O': ('d',)
+        },
+        {
+            'O': ('d',),
+            'C': ('b', 'a')
+        },
     )
     structure = cg.gen_many(5, *cfgs)
 

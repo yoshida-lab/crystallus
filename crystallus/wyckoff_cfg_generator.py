@@ -1,12 +1,11 @@
 from typing import Dict, List, Tuple
-from ._util import dangerwrap
 from .crystallus import WyckoffCfgGenerator as _WYG
 
 
 class WyckoffCfgGenerator(object):
 
     def __init__(self, *, max_recurrent=1_000, n_jobs=-1, **composition):
-        """A generator to probale Wyckoff configurations for the given composition.
+        """A generator for possible Wyckoff configuration generation.
 
         Parameters
         ----------
@@ -39,24 +38,34 @@ class WyckoffCfgGenerator(object):
         self._wyg.n_jobs = n
 
     def gen_one(self, spacegroup_num: int):
+        """Try to generate a possible Wyckoff configuration under the given space group.
+        
+        Parameters
+        ----------
+        spacegroup_num : int
+            Space group number.
+        
+        Returns
+        -------
+        Dict
+            Wyckoff configuration set, which is a dict with format like:
+            {"Li": ["a", "c"], "O": ["i"]}. Here, the "Li" is an available element
+            symbol and ["a", "c"] is a list which contains coresponding Wyckoff
+            letters. For convenience, dict will be sorted by keys.
+        """
         return self._wyg.gen_one(spacegroup_num)
 
     def gen_many(
-        self,
-        size: int,
-        *spacegroup_num: int,
-        iterative: bool = False,
+            self,
+            size: int,
+            *spacegroup_num: int,
     ):
-        """Generate probale configurations
+        """Try to generate possible Wyckoff configuration sets.
 
         Parameters
         ----------
         size : int
-            How many times for trying.
-        iterative: bool
-            Running like a iterator. Instead of return results until all done,
-            Results will be returned when generation of each spacegroup has done.
-            By default, False
+            How many times to try for one space group.
         spacegroup_num: int
             The spacegroup numbers.
 
@@ -67,13 +76,36 @@ class WyckoffCfgGenerator(object):
             configurations (wy_cfg). If only one spacegroup number was given,
             will only return the list of wy_cfgs, otherwise return in dict with
             spacegroup number as key. wy_cfgs will be formated as
-            {<element 1>: (<Wyckoff letter>, <Wyckoff letter>, ...), <element 2>: (...), ...}.
+            {element 1: [Wyckoff_letter, Wyckoff_letter, ...], element 2: [...], ...}.
         """
-        if iterative:
-            for sp_num in spacegroup_num:
-                yield sp_num, self._wyg.gen_many(size, sp_num)
-        else:
-            return self._wyg.gen_many(size, *spacegroup_num)
+        return self._wyg.gen_many(size, *spacegroup_num)
+
+    def gen_many_iter(
+            self,
+            size: int,
+            *spacegroup_num: int,
+            iterative: bool = False,
+    ):
+        """Try to generate possible Wyckoff configuration sets.
+
+        Parameters
+        ----------
+        size : int
+            How many times to try for one space group.
+        spacegroup_num: int
+            The spacegroup numbers.
+
+        Yields
+        ------
+        Dict[int, List[Dict]], List[Dict]
+            A collection contains spacegroup number and it's corresponding Wyckoff
+            configurations (wy_cfg). If only one spacegroup number was given,
+            will only return the list of wy_cfgs, otherwise return in dict with
+            spacegroup number as key. wy_cfgs will be formated as
+            {element 1: [Wyckoff_letter, Wyckoff_letter, ...], element 2: [...], ...}.
+        """
+        for sp_num in spacegroup_num:
+            yield sp_num, self._wyg.gen_many(size, sp_num)
 
     def __repr__(self):
         return f"WyckoffCfgGenerator(\

@@ -43,14 +43,14 @@ We support Python 3.6, 3.7, and 3.8 on macOS and Linux (**windows is not support
     $> conda activate crystallus  # activate your python environment by name
     $> pip install -U maturin  # install maturin using pip
     $> cd <path/to/crystallus>  # chang to the root of crystallus codes
-    $> maturin build -i $(which python) --release --no-sdist --strip . # build package
+    $> maturin build -i $(which python) --release --no-sdist --strip  # build package
    ```
 
    If everything goes well, you will find a `crystallus-*.whl` file under `target/wheels` directory.
    Then you can use pip to install it into your python environment (in this example, it is the newly created environment named `crystallus`).
 
    ```bash
-   $> pip install target/wheels/crystallus-*.whl
+   $> pip install -U target/wheels/crystallus-*.whl
    ```
 
 ## Usage

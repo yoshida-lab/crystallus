@@ -38,8 +38,7 @@ itertools = '^0.9.0'
 rayon = '^1.3.0'
 
 [dependencies.pyo3]
-git = 'https://github.com/PyO3/pyo3'
-branch = 'master'
+version = "0.9.0"
 
 [dependencies.libcrystal]
 path = 'libcrystal'

@@ -112,8 +112,6 @@ impl WyckoffCfgGenerator {
                     .collect();
                 std::env::set_var("RAYON_NUM_THREADS", "");
 
-                // let dict = PyDict::new(py);
-                // dict.set_item(spacegroup_num, ret)?;
                 Ok(ret.into_py(py))
             }
             _ => {

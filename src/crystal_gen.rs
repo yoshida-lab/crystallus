@@ -100,10 +100,22 @@ impl CrystalGenerator {
                         let dict = PyDict::new(py);
                         dict.set_item("spacegroup_num", w.spacegroup_num)?;
                         dict.set_item("volume", w.volume)?;
-                        dict.set_item("lattice", w.lattice.into_raw_vec())?;
+                        dict.set_item(
+                            "lattice",
+                            w.lattice
+                                .into_raw_vec()
+                                .chunks(3)
+                                .collect::<Vec<&[Float]>>(),
+                        )?;
                         dict.set_item("species", w.elements)?;
                         dict.set_item("wyckoff_letters", w.wyckoff_letters)?;
-                        dict.set_item("coords", w.particles.into_raw_vec())?;
+                        dict.set_item(
+                            "coords",
+                            w.particles
+                                .into_raw_vec()
+                                .chunks(3)
+                                .collect::<Vec<&[Float]>>(),
+                        )?;
 
                         Ok(dict.into_py(py))
                     }
@@ -184,10 +196,24 @@ impl CrystalGenerator {
             let dict = PyDict::new(py);
             dict.set_item("spacegroup_num", crystal.spacegroup_num)?;
             dict.set_item("volume", crystal.volume)?;
-            dict.set_item("lattice", crystal.lattice.into_raw_vec())?;
+            dict.set_item(
+                "lattice",
+                crystal
+                    .lattice
+                    .into_raw_vec()
+                    .chunks(3)
+                    .collect::<Vec<&[Float]>>(),
+            )?;
             dict.set_item("species", crystal.elements)?;
             dict.set_item("wyckoff_letters", crystal.wyckoff_letters)?;
-            dict.set_item("coords", crystal.particles.into_raw_vec())?;
+            dict.set_item(
+                "coords",
+                crystal
+                    .particles
+                    .into_raw_vec()
+                    .chunks(3)
+                    .collect::<Vec<&[Float]>>(),
+            )?;
 
             ret_.push(dict.into_py(py));
         }

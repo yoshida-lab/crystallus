@@ -3,7 +3,6 @@
 # license that can be found in the LICENSE file.
 
 from .crystallus import CrystalGenerator as _CG
-from ._util import dangerwrap
 from typing import Tuple, Dict
 
 __all__ = ["CrystalGenerator"]
@@ -12,33 +11,34 @@ __all__ = ["CrystalGenerator"]
 class CrystalGenerator(object):
 
     def __init__(
-        self,
-        spacegroup_num: int,
-        estimated_volume: float,
-        estimated_variance: float,
-        *,
-        min_distance_tolerance: float = 0.15,
-        angle_range: Tuple[float, float] = (30., 150.),
-        angle_tolerance: float = 20.,
-        max_recurrent: int = 5_000,
-        n_jobs: int = -1,
+            self,
+            spacegroup_num: int,
+            estimated_volume: float,
+            estimated_variance: float,
+            *,
+            min_distance_tolerance: float = 0.15,
+            angle_range: Tuple[float, float] = (30., 150.),
+            angle_tolerance: float = 20.,
+            max_recurrent: int = 5_000,
+            n_jobs: int = -1,
     ):
-        """A generator to generate crystal structures.
+        """A generator for possible crystal structure generation.
 
         Parameters
         ----------
         spacegroup_num : int
             Specify the spacegroup.
         estimated_volume : float
-            The estimated volume of primitive cell.
+            The estimated volume of primitive cell. Unit is Å^3.
         estimated_variance : float
-            The estimated variance of volume prediction.
+            The estimated variance of volume prediction. Unit is Å
         min_distance_tolerance : float, optional
-            The tolerance of atomic distances when distance checking, by default 0.15
+            The tolerance of atomic distances when distance checking. Unit is Å,
+            by default 0.15
         angle_range : Tuple[float, float], optional
-            The range of angles when lattice generation, by default (30., 150.)
+            The range of the degree of angles when lattice generation. by default (30., 150.)
         angle_tolerance : float, optional
-            The Tolerance of minimum angles when lattice generation, by default 20.
+            The Tolerance of minimum of the degree of angles when lattice generation, by default 20.
         max_recurrent : int, optional
             Max recurrent until generate a reasonable structure, by default 5_000
         n_jobs : int, optional
@@ -97,14 +97,15 @@ class CrystalGenerator(object):
         self._cg.n_jobs = n
 
     def gen_one(self, **cfg: Dict[str, Tuple[str]]):
-        """Generate one structure with given configration set.
+        """Try to generate a legal crystal structure with given configuration set.
 
         Parameters
         ----------
         **cfg: Dict[str, Tuple[str]]
-            Configuration set with format like: {"Li": ("a", "c"), "O": ("i",)},
-            where "Li" is an available element symbol and ("a", "c") is a tuple
-            contains coresponding Wyckoff letters.
+            Wyckoff Configuration set, which is a dict with format like:
+            {"Li": ["a", "c"], "O": ["i"]}. Here, the "Li" is an available element
+            symbol and ["a", "c"] is a list which contains coresponding Wyckoff
+            letters. For convenience, dict will be sorted by keys.
 
         Returns
         -------
@@ -115,28 +116,23 @@ class CrystalGenerator(object):
         """
         return self._cg.gen_one(**cfg)
 
-    def gen_many(self,
-                 size: int,
-                 *cfgs: Dict[str, Tuple[str]],
-                 iterative: bool = False,
-                 **cfg: Dict[str, Tuple[str]]):
-        """Generate structures with given configration set(s) and size.
+    def gen_many(
+            self,
+            size: int,
+            *cfgs: Dict[str, Tuple[str]],
+    ):
+        """Try to generate legal crystal structures with given configuration set(s).
 
         Parameters
         ----------
-        *cfgs: Dict[str, Tuple[str]]
-            A tuple with configuration set ``cfg``s.
         size: int
-            Generation size for each configration set. By default, 1
-        iterative: bool
-            Running like a iterator. Instead of return results until all done,
-            Results will be returned when generation of each configration has done.
-            This only works when length of ``cfgs`` greater than 0. By default, False
-        **cfg: Dict[str, Tuple[str]]
-            Configuration set with format like: {"Li": ("a", "c"), "O": ("i",)},
-            where "Li" is an available element symbol and ("a", "c") is a tuple
+            How many times to try for one configuration set.
+        *cfgs: Dict[str, Tuple[str]]
+            A tuple with Wyckoff configuration set(s).
+            Wyckoff Configuration set is a dict with format like: {"Li": ["a", "c"], "O": ["i"]}.
+            Here, the "Li" is an available element symbol and ["a", "c"] is a list
             which contains coresponding Wyckoff letters. For convenience, dict will
-            be sorted by keys.
+            be sorted by keys..
 
         Returns
         -------
@@ -144,7 +140,30 @@ class CrystalGenerator(object):
             Structure information contains ``spacegroup_mun: int``,
             ``volume: float``, ``lattice: list``, ``wyckoff_letters: list``,
             and ``coords: list``.
+        """
+        assert size >= 1, 'size must be greater than 1'
 
+        if len(cfgs) > 0:
+            return self._cg.gen_many(size, *cfgs)
+        return None
+
+    def gen_many_iter(
+            self,
+            size: int,
+            *cfgs: Dict[str, Tuple[str]],
+    ):
+        """Try to generate legal crystal structures with given configuration set(s), iteratively.
+
+        Parameters
+        ----------
+        size: int
+            How many times to try for one configuration set.
+        *cfgs: Dict[str, Tuple[str]]
+            A tuple with Wyckoff configuration set(s).
+            Wyckoff Configuration set is a dict with format like: {"Li": ["a", "c"], "O": ["i"]}.
+            Here, the "Li" is an available element symbol and ["a", "c"] is a list
+            which contains coresponding Wyckoff letters. For convenience, dict will
+            be sorted by keys..
         Yields
         ------
         Tuple[Dict]
@@ -153,19 +172,8 @@ class CrystalGenerator(object):
             and ``coords: list``.
         """
         assert size >= 1, 'size must be greater than 1'
-        if len(cfgs) != 0 and len(cfg) != 0:
-            raise ValueError('`cfgs` and `cfg are exclusive')
-
-        if len(cfg) != 0:
-            return dangerwrap(self._cg.gen_many, size, cfg)
-        if len(cfgs) != 0:
-            if iterative:
-                for cfg in cfgs:
-                    yield dangerwrap(self._cg.gen_many, size, cfg)
-            else:
-                return dangerwrap(self._cg.gen_many, size, *cfgs)
-
-        raise ValueError('need configration dicts as `cfgs` or dict as `cfg')
+        for cfg in cfgs:
+            yield cfg, self._cg.gen_many(size, cfg)
 
     def __repr__(self):
         return f"CrystalGenerator(\
