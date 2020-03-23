@@ -31,7 +31,7 @@ class CrystalGenerator(object):
         estimated_volume : float
             The estimated volume of primitive cell. Unit is Å^3.
         estimated_variance : float
-            The estimated variance of volume prediction. Unit is Å
+            The estimated variance of volume prediction. Unit is Å^3
         min_distance_tolerance : float, optional
             The tolerance of atomic distances when distance checking. Unit is Å,
             by default 0.15
