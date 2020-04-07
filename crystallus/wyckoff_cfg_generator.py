@@ -39,12 +39,12 @@ class WyckoffCfgGenerator(object):
 
     def gen_one(self, spacegroup_num: int):
         """Try to generate a possible Wyckoff configuration under the given space group.
-        
+
         Parameters
         ----------
         spacegroup_num : int
             Space group number.
-        
+
         Returns
         -------
         Dict
@@ -55,11 +55,7 @@ class WyckoffCfgGenerator(object):
         """
         return self._wyg.gen_one(spacegroup_num)
 
-    def gen_many(
-            self,
-            size: int,
-            *spacegroup_num: int,
-    ):
+    def gen_many(self, size: int, *spacegroup_num: int):
         """Try to generate possible Wyckoff configuration sets.
 
         Parameters
@@ -80,12 +76,7 @@ class WyckoffCfgGenerator(object):
         """
         return self._wyg.gen_many(size, *spacegroup_num)
 
-    def gen_many_iter(
-            self,
-            size: int,
-            *spacegroup_num: int,
-            iterative: bool = False,
-    ):
+    def gen_many_iter(self, size: int, *spacegroup_num: int):
         """Try to generate possible Wyckoff configuration sets.
 
         Parameters

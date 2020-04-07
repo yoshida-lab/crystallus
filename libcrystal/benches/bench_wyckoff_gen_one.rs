@@ -1,6 +1,6 @@
 #![feature(test)]
 extern crate test;
-use crystal::WyckoffPos;
+use libcrystal::WyckoffPos;
 use test::Bencher;
 
 #[bench]

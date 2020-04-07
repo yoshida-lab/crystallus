@@ -1,51 +1,56 @@
 [package]
-name = "libcrystal"
-version = "0.1.0"
-authors = ["tsumina <liu.chang.1865@gmail.com>"]
-edition = "2018"
-
+name = 'libcrystal'
+version = '0.1.0'
+authors = ['tsumina <liu.chang.1865@gmail.com>']
+edition = '2018'
 workspace = '..'
-license = "BSD-3"
-repository = "https://github.com/yoshida-lab/crystallus"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = 'BSD-3'
+repository = 'https://github.com/yoshida-lab/crystallus'
+
+[[bench]]
+name = 'wyckoff_gen_one'
+path = 'benches/bench_wyckoff_gen_one.rs'
+
+[[bench]]
+name = 'wyckoff_gen_many'
+path = 'benches/bench_wyckoff_gen_many.rs'
 
 [lib]
-name = "libcrystal"
-
-[[bench]]
-name = "wyckoff_gen_one"
-path = "benches/bench_wyckoff_gen_one.rs"
-
-[[bench]]
-name = "wyckoff_gen_many"
-path = "benches/bench_wyckoff_gen_many.rs"
+name = 'libcrystal'
 
 [dependencies]
-serde_json = "^1.0"
-rand = "^0.7.3"
-rand_distr = "^0.2.2"
-lazy_static = "^1.4.0"
-regex = "^1.3.3"
-ndarray = "^0.13.0"
-ndarray-linalg = "^0.12.0"
-num-traits  = "^0.2"
+serde_json = '^1.0'
+rand = '^0.7.3'
+rand_distr = '^0.2.2'
+lazy_static = '^1.4.0'
+regex = '^1.3.3'
+ndarray = '^0.13.0'
+ndarray-linalg = '^0.12.0'
+num-traits = '^0.2'
 
 [dev-dependencies]
-approx = "0.3.2"
-ndarray = {features=["approx"], version="0.13.0"}
-ndarray-linalg = {features=["intel-mkl"], version="0.12.0"}
+approx = '0.3.2'
+rayon = '1.3.0'
+
+[dev-dependencies.ndarray]
+features = ['approx']
+version = '0.13.0'
+
+[dev-dependencies.ndarray-linalg]
+features = ['intel-mkl']
+version = '0.12.0'
 
 [features]
 # f32 or f64
 f32 = []
 
 # enable blas usage in ndarray
-intel-mkl  = ["ndarray-linalg/intel-mkl"]
-netlib  = ["ndarray-linalg/netlib"]
-openblas  = ["ndarray-linalg/openblas"]
+intel-mkl  = ['ndarray-linalg/intel-mkl']
+netlib  = ['ndarray-linalg/netlib']
+openblas  = ['ndarray-linalg/openblas']
 
 # enable serde support in ndarray
-serde = ["ndarray-linalg/serde-1"]
+serde = ['ndarray-linalg/serde-1']
 
 # enable rayon support in ndarray
-rayon_ndarray = ["ndarray/rayon"]
+rayon_ndarray = ['ndarray/rayon']

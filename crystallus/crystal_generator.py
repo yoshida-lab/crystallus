@@ -11,16 +11,16 @@ __all__ = ["CrystalGenerator"]
 class CrystalGenerator(object):
 
     def __init__(
-            self,
-            spacegroup_num: int,
-            estimated_volume: float,
-            estimated_variance: float,
-            *,
-            min_distance_tolerance: float = 0.15,
-            angle_range: Tuple[float, float] = (30., 150.),
-            angle_tolerance: float = 20.,
-            max_recurrent: int = 5_000,
-            n_jobs: int = -1,
+        self,
+        spacegroup_num: int,
+        estimated_volume: float,
+        estimated_variance: float,
+        *,
+        min_distance_tolerance: float = 0.15,
+        angle_range: Tuple[float, float] = (30., 150.),
+        angle_tolerance: float = 20.,
+        max_recurrent: int = 5_000,
+        n_jobs: int = -1,
     ):
         """A generator for possible crystal structure generation.
 
@@ -116,11 +116,7 @@ class CrystalGenerator(object):
         """
         return self._cg.gen_one(**cfg)
 
-    def gen_many(
-            self,
-            size: int,
-            *cfgs: Dict[str, Tuple[str]],
-    ):
+    def gen_many(self, size: int, *cfgs: Dict[str, Tuple[str]]):
         """Try to generate legal crystal structures with given configuration set(s).
 
         Parameters
@@ -147,11 +143,7 @@ class CrystalGenerator(object):
             return self._cg.gen_many(size, *cfgs)
         return None
 
-    def gen_many_iter(
-            self,
-            size: int,
-            *cfgs: Dict[str, Tuple[str]],
-    ):
+    def gen_many_iter(self, size: int, *cfgs: Dict[str, Tuple[str]]):
         """Try to generate legal crystal structures with given configuration set(s), iteratively.
 
         Parameters

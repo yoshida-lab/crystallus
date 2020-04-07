@@ -1,6 +1,6 @@
 #![feature(test)]
 extern crate test;
-use crystal::{Float, WyckoffPos};
+use libcrystal::{Float, WyckoffPos};
 use ndarray::Array2;
 use rayon::prelude::*;
 use test::Bencher;
