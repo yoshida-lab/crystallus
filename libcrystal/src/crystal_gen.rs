@@ -51,14 +51,6 @@ pub struct CrystalGenerator<'a> {
     lattice_gen: LatticeFn,
 }
 
-fn _get_covalent_radius(element: &Vec<&str>) -> Vec<Float> {
-    let mut ret: Vec<Float> = Vec::new();
-    for e in element.iter() {
-        ret.push(RADIUS[e.clone()]);
-    }
-    ret
-}
-
 impl<'a> CrystalGenerator<'a> {
     pub fn from_spacegroup_num(
         spacegroup_num: usize,
@@ -92,7 +84,6 @@ impl<'a> CrystalGenerator<'a> {
         let estimated_volume = estimated_volume * coefficient;
         let estimated_variance = estimated_variance * coefficient;
 
-        // println!("shift in crystal: {:?}", shifts);
         // build wyckoff generators
         let mut wy_pos_generator: HashMap<&'static str, (usize, WyckoffPos)> = HashMap::new();
         WY[spacegroup_num - 1].iter().for_each(|(k, (m, _, p))| {
@@ -107,6 +98,7 @@ impl<'a> CrystalGenerator<'a> {
 
         let angle_tolerance = angle_tolerance.unwrap_or(20.);
         let angle_range = angle_range.unwrap_or((30., 150.));
+        let min_distance_tolerance = min_distance_tolerance.unwrap_or(0.15);
 
         if angle_range.0 * 3. >= 360. {
             return Err(CrystalGeneratorError(
@@ -302,7 +294,7 @@ impl<'a> CrystalGenerator<'a> {
             _ => return Err(CrystalGeneratorError("unknown error".to_owned())),
         };
         Ok(CrystalGenerator {
-            min_distance_tolerance: min_distance_tolerance.unwrap_or(0.15),
+            min_distance_tolerance,
             spacegroup_num,
             wy_pos_generator,
             lattice_gen,
@@ -310,6 +302,14 @@ impl<'a> CrystalGenerator<'a> {
         })
     }
 
+    #[inline]
+    fn get_covalent_radius(element: &Vec<&str>) -> Vec<Float> {
+        let mut ret: Vec<Float> = Vec::new();
+        for e in element.iter() {
+            ret.push(RADIUS[e.clone()]);
+        }
+        ret
+    }
     #[inline]
     fn lattice_from(abc: Vec<Float>, angles: Vec<Float>) -> Array2<Float> {
         let (a, b, c, alpha, beta, gamma) = (
@@ -446,7 +446,7 @@ impl<'a> CrystalGenerator<'a> {
         match pbc_all_distances(lattice, particles) {
             Ok(distance_matrix) => {
                 let ii = distance_matrix.shape()[0];
-                let radius = _get_covalent_radius(elements);
+                let radius = CrystalGenerator::get_covalent_radius(elements);
                 for i in 0..(ii - 1) {
                     for j in (i + 1)..ii {
                         if distance_matrix[[i, j]]
@@ -473,7 +473,7 @@ mod tests {
     fn test_get_covalent_radius() {
         let elements = vec!["Li", "P", "O", "Ti", "Pd"];
         assert_eq!(
-            _get_covalent_radius(&elements),
+            CrystalGenerator::get_covalent_radius(&elements),
             vec![1.21, 1.04, 0.64, 1.52, 1.33]
         )
     }
