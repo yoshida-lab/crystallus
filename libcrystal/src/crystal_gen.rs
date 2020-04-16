@@ -47,6 +47,7 @@ pub struct CrystalGenerator<'a> {
     pub spacegroup_num: usize,
     pub min_distance_tolerance: Float,
     pub max_recurrent: u16,
+    pub verbose: bool,
     wy_pos_generator: HashMap<&'a str, (usize, WyckoffPos)>,
     lattice_gen: LatticeFn,
 }
@@ -60,12 +61,14 @@ impl<'a> CrystalGenerator<'a> {
         angle_range: Option<(Float, Float)>,
         angle_tolerance: Option<Float>,
         max_recurrent: Option<u16>,
+        verbose: Option<bool>,
     ) -> Result<CrystalGenerator<'a>, CrystalGeneratorError> {
         if !(1..=230).contains(&spacegroup_num) {
             return Err(CrystalGeneratorError(
                 "space group number is illegal".to_owned(),
             ));
         }
+        let verbose = verbose.unwrap_or(false);
         let shifts = match &SPG_TYPES[spacegroup_num - 1] {
             'A' => vec![[0., 1. / 2., 1. / 2.]],
             'B' => vec![[1. / 2., 0., 1. / 2.]],
@@ -145,7 +148,7 @@ impl<'a> CrystalGenerator<'a> {
                     }
                 }
                 return Err(CrystalGeneratorError(
-                    "reached the max recurrent number".to_owned(),
+                    "reached the max recurrent number (in lattice generation)".to_owned(),
                 ));
             }),
             // Monoclinic, α=γ=90°，β≠90°；a≠b≠c
@@ -172,7 +175,7 @@ impl<'a> CrystalGenerator<'a> {
                     }
                 }
                 return Err(CrystalGeneratorError(
-                    "reached the max recurrent number".to_owned(),
+                    "reached the max recurrent number (in lattice generation)".to_owned(),
                 ));
             }),
             // Orthorhombic, α=β=γ=90°；a≠b≠c
@@ -193,7 +196,7 @@ impl<'a> CrystalGenerator<'a> {
                     }
                 }
                 return Err(CrystalGeneratorError(
-                    "reached the max recurrent number".to_owned(),
+                    "reached the max recurrent number (in lattice generation)".to_owned(),
                 ));
             }),
             // Tetragonal, α=β=γ=90°；a=b≠c
@@ -205,7 +208,7 @@ impl<'a> CrystalGenerator<'a> {
                 let angles = vec![90 as Float; 3];
                 for _ in 0..max_recurrent {
                     let a = rng.sample(length_dist);
-                    let c: Float = vol / a * a;
+                    let c: Float = vol / (a * a);
 
                     if low_length < c && c < high_length {
                         let abc = vec![a, a, c];
@@ -213,7 +216,7 @@ impl<'a> CrystalGenerator<'a> {
                     }
                 }
                 return Err(CrystalGeneratorError(
-                    "reached the max recurrent number".to_owned(),
+                    "reached the max recurrent number (in lattice generation)".to_owned(),
                 ));
             }),
             // Trigonal
@@ -236,7 +239,7 @@ impl<'a> CrystalGenerator<'a> {
                         }
                     }
                     return Err(CrystalGeneratorError(
-                        "reached the max recurrent number".to_owned(),
+                        "reached the max recurrent number (in lattice generation)".to_owned(),
                     ));
                 } else {
                     // α=β=γ<90°；a=b=c
@@ -252,7 +255,7 @@ impl<'a> CrystalGenerator<'a> {
                         }
                     }
                     return Err(CrystalGeneratorError(
-                        "reached the max recurrent number".to_owned(),
+                        "reached the max recurrent number (in lattice generation)".to_owned(),
                     ));
                 }
             }),
@@ -275,14 +278,13 @@ impl<'a> CrystalGenerator<'a> {
                     }
                 }
                 return Err(CrystalGeneratorError(
-                    "reached the max recurrent number".to_owned(),
+                    "reached the max recurrent number (in lattice generation)".to_owned(),
                 ));
             }),
             // Cubic, α=β=γ=90°；a=b=c
             195..=230 => Box::new(move || {
                 let mut rng = thread_rng();
                 let vol: Float = rng.sample(volume_dist).abs();
-                println!("{}", vol);
 
                 // gen angles conditional
                 let angles = vec![90 as Float; 3];
@@ -298,6 +300,7 @@ impl<'a> CrystalGenerator<'a> {
             min_distance_tolerance,
             spacegroup_num,
             wy_pos_generator,
+            verbose,
             lattice_gen,
             max_recurrent,
         })
@@ -401,7 +404,7 @@ impl<'a> CrystalGenerator<'a> {
             }
         }
         return Err(CrystalGeneratorError(
-            "reached the max recurrent number".to_owned(),
+            "reached the max recurrent number, please try to set `estimated_volume` and/or `min_distance_tolerance` bigger. (in crystal structure generation)".to_owned(),
         ));
     }
 
@@ -453,6 +456,15 @@ impl<'a> CrystalGenerator<'a> {
                         if distance_matrix[[i, j]]
                             < radius[i] + radius[j] - self.min_distance_tolerance
                         {
+                            if self.verbose {
+                                println!(
+                                    "[reject] distance of {}-{} = {} < {}",
+                                    elements[i],
+                                    elements[j],
+                                    distance_matrix[[i, j]],
+                                    (radius[i] + radius[j] - self.min_distance_tolerance)
+                                );
+                            }
                             return false;
                         }
                     }
@@ -484,12 +496,14 @@ mod tests {
         expected = "called `Result::unwrap()` on an `Err` value: CrystalGeneratorError(\"space group number is illegal\")"
     )]
     fn should_panic_when_using_wrong_spacegroup_number() {
-        CrystalGenerator::from_spacegroup_num(300, 100., 10., None, None, None, None).unwrap();
+        CrystalGenerator::from_spacegroup_num(300, 100., 10., None, None, None, None, None)
+            .unwrap();
     }
 
     #[test]
     fn should_return_space_group_illegal_err() {
-        let tmp = CrystalGenerator::from_spacegroup_num(300, 100., 10., None, None, None, None);
+        let tmp =
+            CrystalGenerator::from_spacegroup_num(300, 100., 10., None, None, None, None, None);
         match tmp {
             Err(e) => assert_eq!(
                 format!("{}", e),
@@ -509,6 +523,7 @@ mod tests {
             Some((160., 170.)),
             None,
             None,
+            None,
         );
         match tmp {
             Err(e) => assert_eq!(
@@ -519,7 +534,7 @@ mod tests {
         }
     }
     #[test]
-    #[should_panic(expected = "reached the max recurrent number")]
+    #[should_panic(expected = "reached the max recurrent number (in lattice generation)")]
     fn should_panic_when_reach_max_recurrent() {
         let tmp = CrystalGenerator::from_spacegroup_num(
             2,
@@ -529,6 +544,7 @@ mod tests {
             Some((119.999, 200.)),
             None,
             None,
+            None,
         )
         .unwrap();
         (tmp.lattice_gen)().unwrap();
@@ -536,8 +552,8 @@ mod tests {
 
     #[test]
     fn test_create_crystal_generator_from_spacegroup() {
-        let tmp =
-            CrystalGenerator::from_spacegroup_num(2, 100., 10., None, None, None, None).unwrap();
+        let tmp = CrystalGenerator::from_spacegroup_num(2, 100., 10., None, None, None, None, None)
+            .unwrap();
         assert_eq!(tmp.min_distance_tolerance, 0.15);
     }
     #[test]
@@ -549,6 +565,7 @@ mod tests {
             0.,
             Some(5.),
             Some((70., 71.)),
+            None,
             None,
             None,
         )
@@ -570,7 +587,8 @@ mod tests {
     #[test]
     fn test_crystal_generator_gen_lattice() -> Result<(), CrystalGeneratorError> {
         let tmp =
-            CrystalGenerator::from_spacegroup_num(200, 1000., 10., None, None, None, None).unwrap();
+            CrystalGenerator::from_spacegroup_num(200, 1000., 10., None, None, None, None, None)
+                .unwrap();
         let (abc, angles, _vol) = (tmp.lattice_gen)()?;
         assert!(abc.len() == 3);
         assert!(abc.iter().eq(abc.iter()), true);
@@ -587,6 +605,7 @@ mod tests {
             12,
             145.75949096679688,
             20.,
+            None,
             None,
             None,
             None,
@@ -648,7 +667,8 @@ mod tests {
              4       |         a      | (0,0,0) (0,0,1/2)
         ------------------------------------------------------
         */
-        let cg = CrystalGenerator::from_spacegroup_num(63, 1000., 10., None, None, None, None)?;
+        let cg =
+            CrystalGenerator::from_spacegroup_num(63, 1000., 10., None, None, None, None, None)?;
         let cry = cg.gen(&vec!["Li", "P"], &vec!["a", "b"])?;
         assert_eq!(
             cry.elements,
