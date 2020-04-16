@@ -3,7 +3,7 @@
 # license that can be found in the LICENSE file.
 
 from .crystallus import CrystalGenerator as _CG
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List
 
 __all__ = ["CrystalGenerator"]
 
@@ -129,7 +129,7 @@ class CrystalGenerator(object):
         """
         return self._cg.gen_one(**cfg)
 
-    def gen_many(self, size: int, *cfgs: Dict[str, Tuple[str]]):
+    def gen_many(self, size: int, *cfgs: Dict[str, Tuple[str]]) -> List[Dict]:
         """Try to generate legal crystal structures with given configuration set(s).
 
         Parameters
@@ -154,7 +154,7 @@ class CrystalGenerator(object):
 
         if len(cfgs) > 0:
             return self._cg.gen_many(size, *cfgs)
-        return None
+        return []
 
     def gen_many_iter(self, size: int, *cfgs: Dict[str, Tuple[str]]):
         """Try to generate legal crystal structures with given configuration set(s), iteratively.
