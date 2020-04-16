@@ -3,25 +3,24 @@
 # license that can be found in the LICENSE file.
 
 from .crystallus import CrystalGenerator as _CG
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List
 
 __all__ = ["CrystalGenerator"]
 
 
 class CrystalGenerator(object):
 
-    def __init__(
-        self,
-        spacegroup_num: int,
-        estimated_volume: float,
-        estimated_variance: float,
-        *,
-        min_distance_tolerance: float = 0.15,
-        angle_range: Tuple[float, float] = (30., 150.),
-        angle_tolerance: float = 20.,
-        max_recurrent: int = 5_000,
-        n_jobs: int = -1,
-    ):
+    def __init__(self,
+                 spacegroup_num: int,
+                 estimated_volume: float,
+                 estimated_variance: float,
+                 *,
+                 min_distance_tolerance: float = 0.15,
+                 angle_range: Tuple[float, float] = (30., 150.),
+                 angle_tolerance: float = 20.,
+                 max_recurrent: int = 5_000,
+                 n_jobs: int = -1,
+                 verbose: bool = False):
         """A generator for possible crystal structure generation.
 
         Parameters
@@ -46,6 +45,8 @@ class CrystalGenerator(object):
             Max recurrent until generate a reasonable structure, by default 5_000
         n_jobs : int, optional
             Number of cpu cores when parallel calculation, by default -1
+        verbose: bool, optional
+            Set to ``True`` to show more information.
         """
         self._cg = _CG(spacegroup_num=spacegroup_num,
                        estimated_volume=estimated_volume,
@@ -54,7 +55,8 @@ class CrystalGenerator(object):
                        angle_range=angle_range,
                        angle_tolerance=angle_tolerance,
                        max_recurrent=max_recurrent,
-                       n_jobs=n_jobs)
+                       n_jobs=n_jobs,
+                       verbose=verbose)
         self._estimated_volume = estimated_volume
         self._estimated_variance = estimated_variance
         self._min_distance_tolerance = min_distance_tolerance
@@ -99,6 +101,14 @@ class CrystalGenerator(object):
     def n_jobs(self, n):
         self._cg.n_jobs = n
 
+    @property
+    def verbose(self):
+        return self._cg.verbose
+
+    @verbose.setter
+    def verbose(self, n):
+        self._cg.verbose = n
+
     def gen_one(self, **cfg: Dict[str, Tuple[str]]):
         """Try to generate a legal crystal structure with given configuration set.
 
@@ -119,7 +129,7 @@ class CrystalGenerator(object):
         """
         return self._cg.gen_one(**cfg)
 
-    def gen_many(self, size: int, *cfgs: Dict[str, Tuple[str]]):
+    def gen_many(self, size: int, *cfgs: Dict[str, Tuple[str]]) -> List[Dict]:
         """Try to generate legal crystal structures with given configuration set(s).
 
         Parameters
@@ -144,7 +154,7 @@ class CrystalGenerator(object):
 
         if len(cfgs) > 0:
             return self._cg.gen_many(size, *cfgs)
-        return None
+        return []
 
     def gen_many_iter(self, size: int, *cfgs: Dict[str, Tuple[str]]):
         """Try to generate legal crystal structures with given configuration set(s), iteratively.

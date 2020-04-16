@@ -22,7 +22,8 @@ impl CrystalGenerator {
         angle_range = "(30., 150.)",
         angle_tolerance = "20.",
         max_recurrent = "5_000",
-        n_jobs = "-1"
+        n_jobs = "-1",
+        verbose = true
     )]
     fn new(
         spacegroup_num: usize,
@@ -33,6 +34,7 @@ impl CrystalGenerator {
         angle_tolerance: Float,
         max_recurrent: u16,
         n_jobs: i16,
+        verbose: bool,
     ) -> PyResult<Self> {
         let _crystal_gen = crystal_gen::from_spacegroup_num(
             spacegroup_num,
@@ -42,6 +44,7 @@ impl CrystalGenerator {
             Some(angle_range),
             Some(angle_tolerance),
             Some(max_recurrent),
+            Some(verbose),
         );
         match _crystal_gen {
             Err(e) => Err(exceptions::ValueError::py_err(e.to_string())),
@@ -80,6 +83,16 @@ impl CrystalGenerator {
         Ok(())
     }
 
+    #[getter(verbose)]
+    fn verbose(&self) -> PyResult<bool> {
+        Ok(self._crystal_gen.verbose)
+    }
+
+    #[setter(verbose)]
+    fn set_verbose(&mut self, verbose: bool) -> PyResult<()> {
+        self._crystal_gen.verbose = verbose;
+        Ok(())
+    }
     #[text_signature = "($self, **cfg)"]
     #[args(cfg = "**")]
     fn gen_one(&self, py: Python<'_>, cfg: Option<&PyDict>) -> PyResult<PyObject> {

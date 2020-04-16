@@ -26,7 +26,7 @@ We support Python 3.6, 3.7, and 3.8 on macOS and Linux (**windows is not support
 2. install rust toolchain
 
    As we said, we use [pyo3](https://github.com/PyO3/pyo3) to provide you the python bindings.
-   Based on the official document of pyo3, you have to use nightly build Rust. The minimum required Rust version is 1.42.0-nightly 2020-03-06.
+   Based on the official document of pyo3, you have to use nightly build Rust. The tested Rust version is 1.42.0-nightly 2020-04-10.
    First, you have to install the [rustup](https://www.rust-lang.org/tools/install) tools into your system. This tool enables you to manage your Rust installation locally.
    If you have done, use the following commands to set up your rust compiler toolchain.
 
