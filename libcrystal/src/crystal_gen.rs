@@ -119,7 +119,7 @@ impl<'a> CrystalGenerator<'a> {
             // Triclinic, α≠β≠γ≠；a≠b≠c
             1..=2 => Box::new(move || {
                 let mut rng = thread_rng();
-                let vol: Float = rng.sample(volume_dist);
+                let vol: Float = rng.sample(volume_dist).abs();
 
                 for _ in 0..max_recurrent {
                     let angles: Vec<Float> = rng.sample_iter(angle_dist).take(3).collect();
@@ -151,7 +151,7 @@ impl<'a> CrystalGenerator<'a> {
             // Monoclinic, α=γ=90°，β≠90°；a≠b≠c
             3..=15 => Box::new(move || {
                 let mut rng = thread_rng();
-                let vol: Float = rng.sample(volume_dist);
+                let vol: Float = rng.sample(volume_dist).abs();
 
                 // gen angles conditional
                 let mut angles = vec![90 as Float, 0., 90.];
@@ -178,7 +178,7 @@ impl<'a> CrystalGenerator<'a> {
             // Orthorhombic, α=β=γ=90°；a≠b≠c
             16..=74 => Box::new(move || {
                 let mut rng = thread_rng();
-                let vol: Float = rng.sample(volume_dist);
+                let vol: Float = rng.sample(volume_dist).abs();
 
                 // gen angles conditional
                 let angles = vec![90 as Float; 3];
@@ -199,7 +199,7 @@ impl<'a> CrystalGenerator<'a> {
             // Tetragonal, α=β=γ=90°；a=b≠c
             75..=142 => Box::new(move || {
                 let mut rng = thread_rng();
-                let vol: Float = rng.sample(volume_dist);
+                let vol: Float = rng.sample(volume_dist).abs();
 
                 // gen angles conditional
                 let angles = vec![90 as Float; 3];
@@ -219,7 +219,7 @@ impl<'a> CrystalGenerator<'a> {
             // Trigonal
             n @ 143..=167 => Box::new(move || {
                 let mut rng = thread_rng();
-                let vol: Float = rng.sample(volume_dist);
+                let vol: Float = rng.sample(volume_dist).abs();
                 if ![146, 148, 155, 160, 161, 166, 167].contains(&n) {
                     // α=β=90°，γ=120°；a=b≠c
                     // gen angles conditional
@@ -259,7 +259,7 @@ impl<'a> CrystalGenerator<'a> {
             // Hexagonal, α=β=90°，γ=120°；a=b≠c
             168..=194 => Box::new(move || {
                 let mut rng = thread_rng();
-                let vol: Float = rng.sample(volume_dist);
+                let vol: Float = rng.sample(volume_dist).abs();
 
                 // gen angles conditional
                 let angles = vec![90 as Float, 90., 120.];
@@ -281,7 +281,8 @@ impl<'a> CrystalGenerator<'a> {
             // Cubic, α=β=γ=90°；a=b=c
             195..=230 => Box::new(move || {
                 let mut rng = thread_rng();
-                let vol: Float = rng.sample(volume_dist);
+                let vol: Float = rng.sample(volume_dist).abs();
+                println!("{}", vol);
 
                 // gen angles conditional
                 let angles = vec![90 as Float; 3];
