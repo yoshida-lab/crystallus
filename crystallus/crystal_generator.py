@@ -185,7 +185,7 @@ class CrystalGenerator(object):
             \n    spacegroup_num={self.spacegroup_num},\
             \n    estimated_volume={self.estimated_volume},\
             \n    estimated_variance={self.estimated_variance},\
-            \n     min_distance_tolerance={self.min_distance_tolerance},\
+            \n    min_distance_tolerance={self.min_distance_tolerance},\
             \n    angle_range={self.angle_range},\
             \n    angle_tolerance={self.angle_tolerance},\
             \n    max_recurrent={self.max_recurrent},\
