@@ -99,7 +99,7 @@ impl<'a> WyckoffCfgGenerator<'a> {
                     continue;
                 }
                 // randomly select a suitable wyckoff letter
-                let n: usize = thread_rng().gen_range(0, pool.len());
+                let n: usize = thread_rng().gen_range(0, upper);
                 let &(multiplicity, letter, reuse) = pool[n];
 
                 // atom numbers - multiplicity
@@ -116,6 +116,11 @@ impl<'a> WyckoffCfgGenerator<'a> {
 
             composition_.retain(|_, &mut num| num > 0.);
             if composition_.is_empty() {
+                // resort wyckoff letters
+                // because iterator is lazy, we have to use for statement
+                for (_, k) in ret_.iter_mut() {
+                    k.sort();
+                }
                 return Ok(ret_);
             }
         }
