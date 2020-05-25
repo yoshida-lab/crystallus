@@ -1,6 +1,6 @@
 [package]
 name = 'libcrystal'
-version = '0.1.2'
+version = '0.1.3'
 authors = ['tsumina <liu.chang.1865@gmail.com>']
 edition = '2018'
 workspace = '..'
@@ -34,7 +34,7 @@ rayon = '1.3.0'
 
 [dev-dependencies.ndarray]
 features = ['approx']
-version = '0.13.0'
+version = '0.13.1'
 
 [dev-dependencies.ndarray-linalg]
 features = ['intel-mkl']

@@ -1,6 +1,6 @@
 [package]
 name = 'crystallus'
-version = '0.1.3'
+version = '0.1.4'
 authors = ['tsumina <liu.chang.1865@gmail.com>']
 homepage = 'https://github.com/yoshida-lab/crystallus'
 repository = 'https://github.com/yoshida-lab/crystallus'
@@ -39,11 +39,11 @@ rayon = '^1.3.0'
 # parking_lot = { version = "0.10", features = ["nightly"] }
 
 [dependencies.pyo3]
-version = "0.9.2"
+version = "0.10.1"
 
 [dependencies.libcrystal]
 path = 'libcrystal'
-version = '^0.1.2'
+version = '^0.1.3'
 features = []
 
 [features]
