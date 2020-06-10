@@ -5,3 +5,5 @@ from .crystal_generator import CrystalGenerator
 from .wyckoff_db import Wyckoff as WyckoffDB, SpaceGroup as SpaceGroupDB
 
 __all__ = ["CrystalGenerator", "WyckoffCfgGenerator", "WyckoffDB", "SpaceGroupDB"]
+
+__version__ = "0.1.4"
