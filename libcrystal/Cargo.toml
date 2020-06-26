@@ -1,6 +1,6 @@
 [package]
 name = 'libcrystal'
-version = '0.1.3'
+version = '0.1.4'
 authors = ['tsumina <liu.chang.1865@gmail.com>']
 edition = '2018'
 workspace = '..'
@@ -30,7 +30,7 @@ num-traits = '^0.2.11'
 
 [dev-dependencies]
 approx = '0.3.2'
-rayon = '1.3.0'
+rayon = '1.3.1'
 
 [dev-dependencies.ndarray]
 features = ['approx']
