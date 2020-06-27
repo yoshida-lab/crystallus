@@ -1,6 +1,6 @@
 [package]
 name = 'crystallus'
-version = '0.1.4'
+version = '0.1.5-dev'
 authors = ['tsumina <liu.chang.1865@gmail.com>']
 homepage = 'https://github.com/yoshida-lab/crystallus'
 repository = 'https://github.com/yoshida-lab/crystallus'
@@ -24,7 +24,7 @@ classifier = [
     'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
 ]
-requires-python = '>=3.5'
+requires-python = '>=3.6'
 
 [workspace]
 members = ['libcrystal']

@@ -10,7 +10,7 @@ use libcrystal::{Float, WyckoffCfgGenerator as wyckoff_cfg_gen};
 #[pyclass(module = "crystallus")]
 #[text_signature = "(max_recurrent, n_jobs, **composition)"]
 pub struct WyckoffCfgGenerator {
-    composition: BTreeMap<&'static str, Float>,
+    composition: BTreeMap<String, Float>,
     max_recurrent: u16,
     _n_jobs: i16,
 }
@@ -22,11 +22,12 @@ impl WyckoffCfgGenerator {
     fn new(
         max_recurrent: Option<u16>,
         n_jobs: Option<i16>,
-        composition: Option<&'static PyDict>,
+        composition: Option<&PyDict>,
     ) -> PyResult<Self> {
+        let composition = composition.clone();
         match composition {
             Some(cfg) => {
-                let composition: BTreeMap<&str, Float> = cfg.extract()?;
+                let composition: BTreeMap<String, Float> = cfg.extract()?;
                 Ok(WyckoffCfgGenerator {
                     max_recurrent: max_recurrent.unwrap_or(1000),
                     composition,
@@ -98,12 +99,12 @@ impl WyckoffCfgGenerator {
                     };
 
                 //Do works
-                let ret: Vec<BTreeMap<&str, Vec<&str>>> = py.allow_threads(|| {
+                let ret: Vec<BTreeMap<String, Vec<&str>>> = py.allow_threads(|| {
                     (0..size)
                         .into_par_iter()
                         .map(|_| wy.gen(&self.composition))
                         .filter_map(Result::ok)
-                        .collect::<Vec<BTreeMap<&str, Vec<&str>>>>()
+                        .collect()
                 });
                 let ret: Vec<PyObject> = ret
                     .into_iter()
@@ -129,12 +130,12 @@ impl WyckoffCfgGenerator {
                 }
                 for (wy, sp_num) in tmp.iter().zip(spacegroup_num) {
                     //Do works
-                    let ret: Vec<BTreeMap<&str, Vec<&str>>> = py.allow_threads(move || {
+                    let ret: Vec<BTreeMap<String, Vec<&str>>> = py.allow_threads(move || {
                         (0..size)
                             .into_par_iter()
                             .map(|_| wy.gen(&self.composition))
                             .filter_map(Result::ok)
-                            .collect::<Vec<BTreeMap<&str, Vec<&str>>>>()
+                            .collect()
                     });
                     let ret: Vec<PyObject> = ret
                         .into_iter()
