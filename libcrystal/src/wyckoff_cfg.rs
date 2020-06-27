@@ -18,18 +18,18 @@ impl fmt::Display for WyckoffCfgGeneratorError {
 
 impl error::Error for WyckoffCfgGeneratorError {}
 
-pub struct WyckoffCfgGenerator<'a> {
+pub struct WyckoffCfgGenerator {
     // pool:       [multiplicity, letter, reuse]
-    candidate_pool: Vec<(usize, &'a str, &'a bool)>,
+    candidate_pool: Vec<(usize, &'static str, &'static bool)>,
     pub max_recurrent: u16,
     scale: u8,
 }
 
-impl<'a> WyckoffCfgGenerator<'a> {
+impl WyckoffCfgGenerator {
     pub fn from_spacegroup_num(
         spacegroup_num: usize,
         max_recurrent: Option<u16>,
-    ) -> Result<WyckoffCfgGenerator<'a>, WyckoffCfgGeneratorError> {
+    ) -> Result<WyckoffCfgGenerator, WyckoffCfgGeneratorError> {
         if !(1..=230).contains(&spacegroup_num) {
             return Err(WyckoffCfgGeneratorError(
                 "space group number is illegal".to_owned(),
@@ -38,7 +38,7 @@ impl<'a> WyckoffCfgGenerator<'a> {
 
         // get wyckoff letters and corresponding multiplicity
         //                 [multiplicity, letter, reuse]
-        let candidate_pool: Vec<(usize, &'a str, &bool)> = WY[spacegroup_num - 1]
+        let candidate_pool: Vec<(usize, &str, &bool)> = WY[spacegroup_num - 1]
             .iter()
             .map(|(&letter, (multiplicity, reuse, _))| (*multiplicity, letter, reuse))
             .collect();
@@ -61,16 +61,17 @@ impl<'a> WyckoffCfgGenerator<'a> {
         })
     }
 
+    /// Generate Wyckoff configurations for the given composition.
     pub fn gen(
         &self,
-        composition: &BTreeMap<&'a str, Float>,
-    ) -> Result<BTreeMap<&str, Vec<&str>>, WyckoffCfgGeneratorError> {
+        composition: &BTreeMap<String, Float>,
+    ) -> Result<BTreeMap<String, Vec<&str>>, WyckoffCfgGeneratorError> {
         let mut checker = false;
-        let mut ret_: BTreeMap<&str, Vec<&str>> = BTreeMap::new(); // such like: {Li: (b, a), O: (d,)}, where 'b', 'a', and 'd' are wyckoff letters
+        let mut ret_: BTreeMap<String, Vec<&str>> = BTreeMap::new(); // such like: {Li: (b, a), O: (d,)}, where 'b', 'a', and 'd' are wyckoff letters
         let mut used: Vec<&str> = Vec::new(); // such like: [b, d]
-        let mut composition_: HashMap<&str, Float> = composition
+        let mut composition_: HashMap<String, Float> = composition
             .iter()
-            .map(|(&k, v)| (k, v * self.scale as Float))
+            .map(|(k, v)| (k.clone(), v * self.scale as Float))
             .collect();
         for _ in 0..self.max_recurrent {
             if checker {
@@ -78,7 +79,7 @@ impl<'a> WyckoffCfgGenerator<'a> {
                 used = Vec::new(); // such like: [b, d]
                 composition_ = composition
                     .iter()
-                    .map(|(&k, v)| (k, v * self.scale as Float))
+                    .map(|(k, v)| (k.clone(), v * self.scale as Float))
                     .collect();
             }
 
@@ -106,7 +107,7 @@ impl<'a> WyckoffCfgGenerator<'a> {
                 *num -= multiplicity as Float;
 
                 // update returns
-                ret_.entry(*element).or_insert(vec![]).push(letter);
+                ret_.entry(element.clone()).or_insert(vec![]).push(letter);
 
                 // record non-reuseable letters
                 if !reuse {
@@ -152,22 +153,47 @@ mod tests {
     fn test_wyckoff_cfg_gen() -> Result<(), WyckoffCfgGeneratorError> {
         let wy = WyckoffCfgGenerator::from_spacegroup_num(167, None)?; // R-3c
         let cfg = wy.gen(&BTreeMap::from_iter(
-            vec![("Ca", 2 as Float), ("C", 2.), ("O", 6.)].into_iter(),
+            vec![
+                ("Ca".to_owned(), 2 as Float),
+                ("C".to_owned(), 2.),
+                ("O".to_owned(), 6.),
+            ]
+            .into_iter(),
         ))?;
         assert!(
             cfg == BTreeMap::from_iter(
-                vec![("Ca", vec!["b"]), ("C", vec!["a"]), ("O", vec!["e"])].into_iter(),
+                vec![
+                    ("Ca".to_owned(), vec!["b"]),
+                    ("C".to_owned(), vec!["a"]),
+                    ("O".to_owned(), vec!["e"])
+                ]
+                .into_iter(),
             ) || cfg
                 == BTreeMap::from_iter(
-                    vec![("Ca", vec!["b"]), ("C", vec!["a"]), ("O", vec!["d"])].into_iter(),
+                    vec![
+                        ("Ca".to_owned(), vec!["b"]),
+                        ("C".to_owned(), vec!["a"]),
+                        ("O".to_owned(), vec!["d"])
+                    ]
+                    .into_iter(),
                 )
                 || cfg
                     == BTreeMap::from_iter(
-                        vec![("Ca", vec!["a"]), ("C", vec!["b"]), ("O", vec!["e"])].into_iter(),
+                        vec![
+                            ("Ca".to_owned(), vec!["a"]),
+                            ("C".to_owned(), vec!["b"]),
+                            ("O".to_owned(), vec!["e"])
+                        ]
+                        .into_iter(),
                     )
                 || cfg
                     == BTreeMap::from_iter(
-                        vec![("Ca", vec!["a"]), ("C", vec!["b"]), ("O", vec!["d"])].into_iter(),
+                        vec![
+                            ("Ca".to_owned(), vec!["a"]),
+                            ("C".to_owned(), vec!["b"]),
+                            ("O".to_owned(), vec!["d"])
+                        ]
+                        .into_iter(),
                     )
         );
         Ok(())

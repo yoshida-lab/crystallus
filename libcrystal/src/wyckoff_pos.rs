@@ -185,11 +185,14 @@ impl WyckoffPos {
             None => {
                 let pos: Vec<Coord> = self.particles.iter().map(|p| p.gen(x, y, z)).collect();
                 let pos = arr2(&pos);
-                match &self._shift {
+                let coords = match &self._shift {
                     None => pos,
                     Some(shifts) => {
+                        // build a vec and put raw coords at position 0
+                        // auto broadcast arr2 + arr1, and append results into ret
                         let mut ret = vec![pos];
                         ret.append(&mut shifts.iter().map(|m| &ret[0] + &arr1(m)).collect());
+                        // stack all rows
                         stack(
                             Axis(0),
                             &ret.iter()
@@ -198,7 +201,13 @@ impl WyckoffPos {
                         )
                         .unwrap()
                     }
-                }
+                };
+                // normalization
+                coords.mapv_into(|x| match x {
+                    x_ if x_ > 1. => x_ - 1.,
+                    x_ if x_ < 0. => x_ + 1.,
+                    _ => x,
+                })
             }
             Some(arr) => return arr.clone(),
         }
@@ -214,6 +223,7 @@ impl WyckoffPos {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use approx::assert_abs_diff_eq;
     #[test]
     fn test_coordinate_from_err() {
         assert!(Coordinate::from_str("error patten").is_err());
@@ -303,12 +313,7 @@ mod tests {
             WyckoffPos::from_str("(x,y,1/2),(-y,x-y,1/2),(-x+y,-x,1/2),(-x,-y,1/2)")
                 .unwrap()
                 .gen(1., 1., 1.),
-            arr2(&[
-                [1., 1., 0.5],
-                [-1., 0., 0.5],
-                [0., -1., 0.5],
-                [-1., -1., 0.5],
-            ])
+            arr2(&[[1., 1., 0.5], [0., 0., 0.5], [0., 0., 0.5], [0., 0., 0.5],])
         );
     }
     #[test]
@@ -333,17 +338,17 @@ mod tests {
         )
         .unwrap()
         .gen(1., 1., 1.);
-        assert_eq!(
+        assert_abs_diff_eq!(
             tmp,
             arr2(&[
                 [1., 1., 0.5],
-                [-1., 0., 0.5],
-                [0., -1., 0.5],
-                [-1., -1., 0.5],
-                [1. + 0.3, 1. + 0.3, 0.5 + 0.3],
-                [-1. + 0.3, 0. + 0.3, 0.5 + 0.3],
-                [0. + 0.3, -1. + 0.3, 0.5 + 0.3],
-                [-1. + 0.3, -1. + 0.3, 0.5 + 0.3],
+                [0., 0., 0.5],
+                [0., 0., 0.5],
+                [0., 0., 0.5],
+                [0.3, 0.3, 0.5 + 0.3],
+                [0.3, 0.3, 0.5 + 0.3],
+                [0.3, 0.3, 0.5 + 0.3],
+                [0.3, 0.3, 0.5 + 0.3],
             ])
         )
     }
