@@ -4,7 +4,9 @@ use pyo3::types::{PyDict, PyTuple};
 use rayon::prelude::*;
 use std::collections::BTreeMap;
 
-use libcrystal::{Crystal as crystal_, CrystalGenerator as crystal_gen, Float};
+use libcrystal::{
+    lll_reduce, pbc_all_distances, Crystal as crystal_, CrystalGenerator as crystal_gen, Float,
+};
 
 #[pyclass(module = "crystallus")]
 #[text_signature = "(spacegroup_num, estimated_volume, estimated_variance, *, min_distance_tolerance, angle_range, angle_tolerance, max_recurrent, n_jobs)"]

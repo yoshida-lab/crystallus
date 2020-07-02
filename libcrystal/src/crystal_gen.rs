@@ -4,7 +4,7 @@
 
 mod utils;
 
-use self::utils::pbc_all_distances;
+pub use self::utils::{lll_reduce, pbc_all_distances};
 use crate::{wyckoff_pos::*, Float, SPG_TYPES, WY};
 use ndarray::{arr2, stack, Array2, ArrayView2, Axis};
 use rand::{thread_rng, Rng};

@@ -25,26 +25,15 @@ fn _dot_2d_mod(a: &Array2<Float>, b: &Array2<Float>) -> Array2<Float> {
     o
 }
 
-/**
-Returns the shortest vectors between two lists of coordinates taking into
-account periodic boundary conditions and the lattice.
-
-Args:
-    lattice: lattice to use
-    frac_coords_1: First set of fractional coordinates. e.g., [0.5, 0.6, 0.7]
-        or [[1.1, 1.2, 4.3], [0.5, 0.6, 0.7]]. Must be np.float_
-    frac_coords_2: Second set of fractional coordinates.
-    mask (int_ array): Mask of matches that are not allowed.
-        i.e. if mask[1,2] == True, then subset[1] cannot be matched
-        to superset[2]
-    lll_frac_tol (float_ array of length 3): Fractional tolerance (per LLL lattice vector) over which
-        the calculation of minimum vectors will be skipped.
-        Can speed up calculation considerably for large structures.
-
-Returns:
-    array of displacement vectors from frac_coords_1 to frac_coords_2
-    first index is frac_coords_1 index, second is frac_coords_2 index
-*/
+/// Returns the shortest vectors between two lists of coordinates taking into
+/// account periodic boundary conditions and the lattice.
+///
+/// Args:
+///    lattice: lattice to use
+///    frac_coords: Fractional coordinates. e.g. [[1.1, 1.2, 4.3], [0.5, 0.6, 0.7]].
+///
+/// Returns:
+///    Distances between each site.
 #[inline]
 pub fn pbc_all_distances(
     lattice: &Array2<Float>,
@@ -148,7 +137,6 @@ fn _gram_schmidt_process(basis: &Array2<Float>) -> Array2<Float> {
 ///
 ///   - `basis`: A generating matrix for the lattice
 ///
-/// The basis is reduced in-place.
 #[inline]
 pub fn lll_reduce(basis: &Array2<Float>, delta: Option<Float>) -> (Array2<Float>, Array2<Float>) {
     // Parameter delta in the Lovasz condition
