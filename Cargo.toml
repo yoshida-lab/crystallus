@@ -1,6 +1,6 @@
 [package]
 name = 'crystallus'
-version = '0.1.5-dev'
+version = '0.1.5-beta'
 authors = ['tsumina <liu.chang.1865@gmail.com>']
 homepage = 'https://github.com/yoshida-lab/crystallus'
 repository = 'https://github.com/yoshida-lab/crystallus'
@@ -34,11 +34,11 @@ name = 'crystallus'
 crate-type = ['cdylib']
 
 [dependencies]
-itertools = '^0.9.0'
-rayon = '^1.3.0'
+itertools = '0.9.0'
+rayon = '1.3.1'
 
 [dependencies.pyo3]
-version = "0.10.1"
+version = "0.11.1"
 
 [dependencies.libcrystal]
 path = 'libcrystal'
