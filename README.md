@@ -13,7 +13,7 @@ We highly recommend you to use [miniconda](https://docs.conda.io/en/latest/minic
 
 1. install dev-python
 
-   Suppose we will use Python 3.7 and Rust 1.42.0-nightly 2020-04-10.
+   Suppose we will use Python 3.7 and Rust 1.46.0-nightly 2020-06-26.
    The following commands will check your conda installation. If everything is ok, then create a new environment named `crystallus` and install packages using `env/environment.yml` environment file.
 
    ```bash
@@ -27,12 +27,12 @@ We highly recommend you to use [miniconda](https://docs.conda.io/en/latest/minic
 2. install rust toolchain
 
    We use [pyo3](https://github.com/PyO3/pyo3) to provide you the python bindings.
-   Based on the official document of pyo3, you have to use nightly build Rust. The tested Rust version is 1.44.0-nightly 2020-04-10.
+   Based on the official document of pyo3, you have to use nightly build Rust. The tested Rust version is 1.44.0-nightly 2020-06-26.
    We will install the [rustup](https://www.rust-lang.org/tools/install) tools into our system and set the default rust compiler using the following commands.
 
    ```bash
-    $> rustup toolchain add nightly-2020-04-10
-    $> rustup default nightly-2020-04-10
+    $> rustup toolchain add nightly-2020-06-26
+    $> rustup default nightly-2020-06-26
    ```
 
 3. compile and install crystallus
