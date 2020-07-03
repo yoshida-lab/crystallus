@@ -15,7 +15,7 @@ class CrystalGenerator(object):
                  estimated_volume: float,
                  estimated_variance: float,
                  *,
-                 min_distance_tolerance: float = 0.15,
+                 min_distance_tolerance: float = 0.1,
                  angle_range: Tuple[float, float] = (30., 150.),
                  angle_tolerance: float = 20.,
                  max_recurrent: int = 5_000,
@@ -36,7 +36,8 @@ class CrystalGenerator(object):
             We will use the abstract valuse if sampled volume is negative.
         min_distance_tolerance : float, optional
             The tolerance of atomic distances when distance checking. Unit is Å,
-            by default 0.15
+            minimum distance = (A_atom_covalent_radius + B_atom_covalent_radius) * (1 - min_distance_tolerance),
+            by default 0.1
         angle_range : Tuple[float, float], optional
             The range of the degree of angles when lattice generation. by default (30., 150.)
         angle_tolerance : float, optional
@@ -109,11 +110,13 @@ class CrystalGenerator(object):
     def verbose(self, n):
         self._cg.verbose = n
 
-    def gen_one(self, **cfg: Dict[str, Tuple[str]]):
+    def gen_one(self, *, check_distance: bool = True, **cfg: Dict[str, Tuple[str]]):
         """Try to generate a legal crystal structure with given configuration set.
 
         Parameters
         ----------
+        check_distance: bool
+            Whether the atomic distance should be checked. default ``True``
         **cfg: Dict[str, Tuple[str]]
             Wyckoff Configuration set, which is a dict with format like:
             {"Li": ["a", "c"], "O": ["i"]}. Here, the "Li" is an available element
@@ -127,15 +130,22 @@ class CrystalGenerator(object):
             ``volume: float``, ``lattice: list``, ``wyckoff_letters: list``,
             and ``coords: list``.
         """
-        return self._cg.gen_one(**cfg)
+        return self._cg.gen_one(check_distance, **cfg)
 
-    def gen_many(self, size: int, *cfgs: Dict[str, Tuple[str]]) -> List[Dict]:
+    def gen_many(
+        self,
+        size: int,
+        *cfgs: Dict[str, Tuple[str]],
+        check_distance: bool = True,
+    ) -> List[Dict]:
         """Try to generate legal crystal structures with given configuration set(s).
 
         Parameters
         ----------
         size: int
             How many times to try for one configuration set.
+        check_distance: bool
+            Whether the atomic distance should be checked. default ``True``
         *cfgs: Dict[str, Tuple[str]]
             A tuple with Wyckoff configuration set(s).
             Wyckoff Configuration set is a dict with format like: {"Li": ["a", "c"], "O": ["i"]}.
@@ -153,16 +163,18 @@ class CrystalGenerator(object):
         assert size >= 1, 'size must be greater than 1'
 
         if len(cfgs) > 0:
-            return self._cg.gen_many(size, *cfgs)
+            return self._cg.gen_many(size, check_distance, *cfgs)
         return []
 
-    def gen_many_iter(self, size: int, *cfgs: Dict[str, Tuple[str]]):
+    def gen_many_iter(self, size: int, *cfgs: Dict[str, Tuple[str]], check_distance: bool = True):
         """Try to generate legal crystal structures with given configuration set(s), iteratively.
 
         Parameters
         ----------
         size: int
             How many times to try for one configuration set.
+        check_distance: bool
+            Whether the atomic distance should be checked. default ``True``
         *cfgs: Dict[str, Tuple[str]]
             A tuple with Wyckoff configuration set(s).
             Wyckoff Configuration set is a dict with format like: {"Li": ["a", "c"], "O": ["i"]}.
@@ -178,7 +190,7 @@ class CrystalGenerator(object):
         """
         assert size >= 1, 'size must be greater than 1'
         for cfg in cfgs:
-            yield cfg, self._cg.gen_many(size, cfg)
+            yield cfg, self._cg.gen_many(size, check_distance, cfg)
 
     def __repr__(self):
         return f"CrystalGenerator(\

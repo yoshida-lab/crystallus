@@ -93,9 +93,14 @@ impl CrystalGenerator {
         self._crystal_gen.verbose = verbose;
         Ok(())
     }
-    #[text_signature = "($self, **cfg)"]
+    #[text_signature = "($self, check_distance, **cfg)"]
     #[args(cfg = "**")]
-    fn gen_one(&self, py: Python<'_>, cfg: Option<&PyDict>) -> PyResult<PyObject> {
+    fn gen_one(
+        &self,
+        py: Python<'_>,
+        check_distance: bool,
+        cfg: Option<&PyDict>,
+    ) -> PyResult<PyObject> {
         match cfg {
             Some(cfg) => {
                 let mut cfg: BTreeMap<&str, Vec<&str>> = cfg.extract()?;
@@ -105,7 +110,9 @@ impl CrystalGenerator {
                     elements.append(&mut vec![elem; letter.len()]);
                     wyckoff_letters.append(letter);
                 }
-                let cry = self._crystal_gen.gen(&elements, &wyckoff_letters);
+                let cry = self
+                    ._crystal_gen
+                    .gen(&elements, &wyckoff_letters, Some(check_distance));
 
                 match cry {
                     Err(e) => Err(exceptions::ValueError::py_err(e.to_string())),
@@ -143,8 +150,14 @@ impl CrystalGenerator {
     }
 
     #[args(cfgs = "*")]
-    #[text_signature = "($self, size, /, *cfgs)"]
-    fn gen_many(&self, py: Python<'_>, size: i32, cfgs: &PyTuple) -> PyResult<PyObject> {
+    #[text_signature = "($self, size, check_distance, /, *cfgs)"]
+    fn gen_many(
+        &self,
+        py: Python<'_>,
+        size: i32,
+        check_distance: bool,
+        cfgs: &PyTuple,
+    ) -> PyResult<PyObject> {
         let mut cfgs: Vec<BTreeMap<&str, Vec<&str>>> =
             match cfgs.extract() {
                 Ok(m) => m,
@@ -176,7 +189,10 @@ impl CrystalGenerator {
                 ret.append(&mut py.allow_threads(move || {
                     (0..size)
                         .into_par_iter()
-                        .map(|_| self._crystal_gen.gen(&elements, &wyckoff_letters))
+                        .map(|_| {
+                            self._crystal_gen
+                                .gen(&elements, &wyckoff_letters, Some(check_distance))
+                        })
                         .filter_map(Result::ok)
                         .collect::<Vec<crystal_>>()
                 }));
@@ -194,7 +210,13 @@ impl CrystalGenerator {
                     ret.append(&mut py.allow_threads(move || {
                         (0..size)
                             .into_par_iter()
-                            .map(|_| self._crystal_gen.gen(&elements, &wyckoff_letters))
+                            .map(|_| {
+                                self._crystal_gen.gen(
+                                    &elements,
+                                    &wyckoff_letters,
+                                    Some(check_distance),
+                                )
+                            })
                             .filter_map(Result::ok)
                             .collect::<Vec<crystal_>>()
                     }));

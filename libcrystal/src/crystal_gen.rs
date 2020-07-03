@@ -119,7 +119,7 @@ impl<'a> CrystalGenerator<'a> {
 
         let angle_tolerance = angle_tolerance.unwrap_or(20.);
         let angle_range = angle_range.unwrap_or((30., 150.));
-        let min_distance_tolerance = min_distance_tolerance.unwrap_or(0.15);
+        let min_distance_tolerance = min_distance_tolerance.unwrap_or(0.1);
 
         if angle_range.0 * 3. >= 360. {
             return Err(CrystalGeneratorError(
@@ -366,7 +366,9 @@ impl<'a> CrystalGenerator<'a> {
         &self,
         elements: &Vec<&'a str>,
         wyckoff_letters: &Vec<&'a str>,
+        check_distance: Option<bool>,
     ) -> Result<Crystal, CrystalGeneratorError> {
+        let checker = check_distance.unwrap_or(true);
         let mut elements_: Vec<&'a str> = Vec::new();
         let mut wyckoff_letters_: Vec<&'a str> = Vec::new();
         let mut wy_gens_: Vec<&WyckoffPos> = Vec::new();
@@ -410,7 +412,7 @@ impl<'a> CrystalGenerator<'a> {
 
             // check distances between all particles,
             // if ok, return generated crystal object
-            if self.check_distance(&lattice, &particles, &elements_) {
+            if !checker {
                 return Ok(Crystal {
                     spacegroup_num: self.spacegroup_num,
                     elements: elements_,
@@ -419,6 +421,17 @@ impl<'a> CrystalGenerator<'a> {
                     lattice,
                     particles,
                 });
+            } else {
+                if self.check_distance(&lattice, &particles, &elements_, &wyckoff_letters_) {
+                    return Ok(Crystal {
+                        spacegroup_num: self.spacegroup_num,
+                        elements: elements_,
+                        wyckoff_letters: wyckoff_letters_,
+                        volume: vol,
+                        lattice,
+                        particles,
+                    });
+                }
             }
         }
         return Err(CrystalGeneratorError(
@@ -464,6 +477,7 @@ impl<'a> CrystalGenerator<'a> {
         lattice: &Array2<Float>,
         particles: &Array2<Float>,
         elements: &Vec<&str>,
+        wyckoff_letters: &Vec<&str>,
     ) -> bool {
         match _pbc(lattice, particles) {
             Ok(distance_matrix) => {
@@ -472,15 +486,17 @@ impl<'a> CrystalGenerator<'a> {
                 for i in 0..(ii - 1) {
                     for j in (i + 1)..ii {
                         if distance_matrix[[i, j]]
-                            < radius[i] + radius[j] - self.min_distance_tolerance
+                            < (radius[i] + radius[j]) * (1. - self.min_distance_tolerance)
                         {
                             if self.verbose {
                                 println!(
-                                    "[reject] distance of {}-{} = {} < {}",
+                                    "[reject] {:>2}[{}] <-> {:>2}[{}] = {:.5} < {:.5} (Å)",
                                     elements[i],
+                                    wyckoff_letters[i],
                                     elements[j],
+                                    wyckoff_letters[j],
                                     distance_matrix[[i, j]],
-                                    (radius[i] + radius[j] - self.min_distance_tolerance)
+                                    (radius[i] + radius[j]) * (1. - self.min_distance_tolerance)
                                 );
                             }
                             return false;
@@ -606,7 +622,7 @@ mod tests {
     fn test_create_crystal_generator_from_spacegroup() {
         let tmp = CrystalGenerator::from_spacegroup_num(2, 100., 10., None, None, None, None, None)
             .unwrap();
-        assert_eq!(tmp.min_distance_tolerance, 0.15);
+        assert_eq!(tmp.min_distance_tolerance, 0.1);
     }
     #[test]
     fn test_create_crystal_generator_from_spacegroup_with_option(
@@ -615,7 +631,7 @@ mod tests {
             2,
             1000.,
             0.,
-            Some(5.),
+            Some(0.15),
             Some((70., 71.)),
             None,
             None,
@@ -624,8 +640,7 @@ mod tests {
         .unwrap();
         let (abc, angles, vol) = (tmp.lattice_gen)()?;
         assert_ulps_eq!(vol, 1000.);
-        assert_eq!(tmp.min_distance_tolerance, 5.);
-        assert_eq!(tmp.min_distance_tolerance, 5.);
+        assert_eq!(tmp.min_distance_tolerance, 0.15);
         assert!((5. < abc[0]) & (abc[0] < 15.));
         assert!((5. < abc[1]) & (abc[1] < 15.));
         assert!((5. < abc[2]) & (abc[2] < 15.));
@@ -704,7 +719,10 @@ mod tests {
             "Ti", "Ti", "Ti", "Ti", "Ti", "Ti", "Ti", "Ti", "O", "O", "O", "O", "O", "O", "O", "O",
             "O", "O", "O", "O", "O", "O", "O", "O",
         ];
-        assert_eq!(tmp.check_distance(&lattice, &particles, &elements), false);
+        assert_eq!(
+            tmp.check_distance(&lattice, &particles, &elements, &vec!["a"; 24]),
+            false
+        );
     }
 
     #[test]
@@ -721,7 +739,7 @@ mod tests {
         */
         let cg =
             CrystalGenerator::from_spacegroup_num(63, 1000., 10., None, None, None, None, None)?;
-        let cry = cg.gen(&vec!["Li", "P"], &vec!["a", "b"])?;
+        let cry = cg.gen(&vec!["Li", "P"], &vec!["a", "b"], None)?;
         assert_eq!(
             cry.elements,
             vec!["Li", "Li", "Li", "Li", "P", "P", "P", "P"]
