@@ -34,10 +34,6 @@ class CrystalGenerator(object):
             ``estimated_volume`` and ``estimated_variance`` will be used to build
             a Gaussion distribution for the sampling of volume of primitive cell.
             We will use the abstract valuse if sampled volume is negative.
-        min_distance_tolerance : float, optional
-            The tolerance of atomic distances when distance checking. Unit is Å,
-            minimum distance = (A_atom_covalent_radius + B_atom_covalent_radius) * (1 - min_distance_tolerance),
-            by default 0.1
         angle_range : Tuple[float, float], optional
             The range of the degree of angles when lattice generation. by default (30., 150.)
         angle_tolerance : float, optional
@@ -52,7 +48,6 @@ class CrystalGenerator(object):
         self._cg = _CG(spacegroup_num=spacegroup_num,
                        estimated_volume=estimated_volume,
                        estimated_variance=estimated_variance,
-                       min_distance_tolerance=min_distance_tolerance,
                        angle_range=angle_range,
                        angle_tolerance=angle_tolerance,
                        max_recurrent=max_recurrent,
@@ -110,13 +105,22 @@ class CrystalGenerator(object):
     def verbose(self, n):
         self._cg.verbose = n
 
-    def gen_one(self, *, check_distance: bool = True, **cfg: Dict[str, Tuple[str]]):
+    def gen_one(self,
+                *,
+                check_distance: bool = True,
+                atomic_distance_tolerance=0.1,
+                **cfg: Dict[str, Tuple[str]]):
         """Try to generate a legal crystal structure with given configuration set.
 
         Parameters
         ----------
-        check_distance: bool
+        check_distance: bool, optional
             Whether the atomic distance should be checked. default ``True``
+        atomic_distance_tolerance : float, optional
+            The tolerance of atomic distances when distance checking. Unit is Å,
+            When ``check_distance`` is ``True``, Any structure has
+            all_atomic_distance < (A_atom_covalent_radius + B_atom_covalent_radius) * (1 - atomic_distance_tolerance) will be rejected,
+            by default 0.1
         **cfg: Dict[str, Tuple[str]]
             Wyckoff Configuration set, which is a dict with format like:
             {"Li": ["a", "c"], "O": ["i"]}. Here, the "Li" is an available element
@@ -130,13 +134,14 @@ class CrystalGenerator(object):
             ``volume: float``, ``lattice: list``, ``wyckoff_letters: list``,
             and ``coords: list``.
         """
-        return self._cg.gen_one(check_distance, **cfg)
+        return self._cg.gen_one(check_distance, atomic_distance_tolerance, **cfg)
 
     def gen_many(
         self,
         size: int,
         *cfgs: Dict[str, Tuple[str]],
         check_distance: bool = True,
+        atomic_distance_tolerance: float = 0.1,
     ) -> List[Dict]:
         """Try to generate legal crystal structures with given configuration set(s).
 
@@ -144,8 +149,13 @@ class CrystalGenerator(object):
         ----------
         size: int
             How many times to try for one configuration set.
-        check_distance: bool
+        check_distance: bool, optional
             Whether the atomic distance should be checked. default ``True``
+        atomic_distance_tolerance : float, optional
+            The tolerance of atomic distances when distance checking. Unit is Å,
+            When ``check_distance`` is ``True``, Any structure has
+            all_atomic_distance < (A_atom_covalent_radius + B_atom_covalent_radius) * (1 - atomic_distance_tolerance) will be rejected,
+            by default 0.1
         *cfgs: Dict[str, Tuple[str]]
             A tuple with Wyckoff configuration set(s).
             Wyckoff Configuration set is a dict with format like: {"Li": ["a", "c"], "O": ["i"]}.
@@ -163,18 +173,34 @@ class CrystalGenerator(object):
         assert size >= 1, 'size must be greater than 1'
 
         if len(cfgs) > 0:
-            return self._cg.gen_many(size, check_distance, *cfgs)
+            return self._cg.gen_many(
+                size,
+                check_distance,
+                atomic_distance_tolerance,
+                *cfgs,
+            )
         return []
 
-    def gen_many_iter(self, size: int, *cfgs: Dict[str, Tuple[str]], check_distance: bool = True):
+    def gen_many_iter(
+        self,
+        size: int,
+        *cfgs: Dict[str, Tuple[str]],
+        check_distance: bool = True,
+        atomic_distance_tolerance: float = 0.1,
+    ):
         """Try to generate legal crystal structures with given configuration set(s), iteratively.
 
         Parameters
         ----------
         size: int
             How many times to try for one configuration set.
-        check_distance: bool
+        check_distance: bool, optional
             Whether the atomic distance should be checked. default ``True``
+        atomic_distance_tolerance : float, optional
+            The tolerance of atomic distances when distance checking. Unit is Å,
+            When ``check_distance`` is ``True``, Any structure has
+            all_atomic_distance < (A_atom_covalent_radius + B_atom_covalent_radius) * (1 - atomic_distance_tolerance) will be rejected,
+            by default 0.1
         *cfgs: Dict[str, Tuple[str]]
             A tuple with Wyckoff configuration set(s).
             Wyckoff Configuration set is a dict with format like: {"Li": ["a", "c"], "O": ["i"]}.
@@ -190,14 +216,18 @@ class CrystalGenerator(object):
         """
         assert size >= 1, 'size must be greater than 1'
         for cfg in cfgs:
-            yield cfg, self._cg.gen_many(size, check_distance, cfg)
+            yield cfg, self._cg.gen_many(
+                size,
+                check_distance,
+                atomic_distance_tolerance,
+                cfg,
+            )
 
     def __repr__(self):
         return f"CrystalGenerator(\
             \n    spacegroup_num={self.spacegroup_num},\
             \n    estimated_volume={self.estimated_volume},\
             \n    estimated_variance={self.estimated_variance},\
-            \n    min_distance_tolerance={self.min_distance_tolerance},\
             \n    angle_range={self.angle_range},\
             \n    angle_tolerance={self.angle_tolerance},\
             \n    max_recurrent={self.max_recurrent},\

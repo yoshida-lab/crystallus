@@ -9,7 +9,8 @@ def test_gen_one():
     structure = cg.gen_one(C=('a', 'b'), O=('d'))
 
     assert set(structure.keys()) == {
-        "lattice", "volume", "spacegroup_num", "species", "wyckoff_letters", "coords"
+        "lattice", "volume", "spacegroup_num", "species", "wyckoff_letters", "coords",
+        "attempts_until_done"
     }
     assert 940 <= structure['volume'] <= 1060
     l = pow(structure['volume'], 1 / 3)
@@ -51,3 +52,24 @@ def test_gen_many_2():
     assert structure[5]['wyckoff_letters'] == ['b', 'a', 'd', 'd', 'd']
     assert structure[0]['wyckoff_letters'] == structure[4]['wyckoff_letters']
     assert structure[5]['wyckoff_letters'] == structure[9]['wyckoff_letters']
+
+
+def test_gen_many_3():
+    cg = CrystalGenerator(33, 1168, 15)
+    comp = {
+        'Ag': ['a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'],
+        'Ge': ['a'],
+        'S': ['a', 'a', 'a', 'a', 'a', 'a']
+    }
+
+    # distance error
+    structure = cg.gen_many(10, comp)
+    assert len(structure) == 0
+
+    # no check
+    structure = cg.gen_many(10, comp, check_distance=False)
+    assert len(structure) == 10
+
+    # make condition losser
+    structure = cg.gen_many(10, comp, atomic_distance_tolerance=0.5)
+    assert len(structure) > 0
