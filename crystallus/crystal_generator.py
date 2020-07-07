@@ -15,10 +15,9 @@ class CrystalGenerator(object):
                  estimated_volume: float,
                  estimated_variance: float,
                  *,
-                 min_distance_tolerance: float = 0.1,
                  angle_range: Tuple[float, float] = (30., 150.),
                  angle_tolerance: float = 20.,
-                 max_recurrent: int = 5_000,
+                 max_attempts_number: int = 5_000,
                  n_jobs: int = -1,
                  verbose: bool = False):
         """A generator for possible crystal structure generation.
@@ -38,7 +37,7 @@ class CrystalGenerator(object):
             The range of the degree of angles when lattice generation. by default (30., 150.)
         angle_tolerance : float, optional
             The Tolerance of minimum of the degree of angles when lattice generation, by default 20.
-        max_recurrent : int, optional
+        max_attempts_number : int, optional
             Max recurrent until generate a reasonable structure, by default 5_000
         n_jobs : int, optional
             Number of cpu cores when parallel calculation, by default -1
@@ -50,15 +49,14 @@ class CrystalGenerator(object):
                        estimated_variance=estimated_variance,
                        angle_range=angle_range,
                        angle_tolerance=angle_tolerance,
-                       max_recurrent=max_recurrent,
+                       max_attempts_number=max_attempts_number,
                        n_jobs=n_jobs,
                        verbose=verbose)
         self._estimated_volume = estimated_volume
         self._estimated_variance = estimated_variance
-        self._min_distance_tolerance = min_distance_tolerance
         self._angle_range = angle_range
         self._angle_tolerance = angle_tolerance
-        self._max_recurrent = max_recurrent
+        self._max_attempts_number = max_attempts_number
         self._spacegroup_num = spacegroup_num
 
     @property
@@ -70,10 +68,6 @@ class CrystalGenerator(object):
         return self._estimated_variance
 
     @property
-    def min_distance_tolerance(self):
-        return self._min_distance_tolerance
-
-    @property
     def angle_range(self):
         return self._angle_range
 
@@ -82,8 +76,8 @@ class CrystalGenerator(object):
         return self._angle_tolerance
 
     @property
-    def max_recurrent(self):
-        return self._max_recurrent
+    def max_attempts_number(self):
+        return self._max_attempts_number
 
     @property
     def spacegroup_num(self):
@@ -108,7 +102,7 @@ class CrystalGenerator(object):
     def gen_one(self,
                 *,
                 check_distance: bool = True,
-                atomic_distance_tolerance=0.1,
+                distance_scale_factor: float = 0.1,
                 **cfg: Dict[str, Tuple[str]]):
         """Try to generate a legal crystal structure with given configuration set.
 
@@ -116,10 +110,10 @@ class CrystalGenerator(object):
         ----------
         check_distance: bool, optional
             Whether the atomic distance should be checked. default ``True``
-        atomic_distance_tolerance : float, optional
-            The tolerance of atomic distances when distance checking. Unit is Å,
+        distance_scale_factor : float, optional
+            Scale factor to determine the tolerance of atomic distances when distance checking. Unit is Å,
             When ``check_distance`` is ``True``, Any structure has
-            all_atomic_distance < (A_atom_covalent_radius + B_atom_covalent_radius) * (1 - atomic_distance_tolerance) will be rejected,
+            all_atomic_distance < (A_atom_covalent_radius + B_atom_covalent_radius) * (1 - distance_scale_factor) will be rejected,
             by default 0.1
         **cfg: Dict[str, Tuple[str]]
             Wyckoff Configuration set, which is a dict with format like:
@@ -134,27 +128,28 @@ class CrystalGenerator(object):
             ``volume: float``, ``lattice: list``, ``wyckoff_letters: list``,
             and ``coords: list``.
         """
-        return self._cg.gen_one(check_distance, atomic_distance_tolerance, **cfg)
+        return self._cg.gen_one(check_distance, distance_scale_factor, **cfg)
 
     def gen_many(
         self,
-        size: int,
+        attempts_number: int,
         *cfgs: Dict[str, Tuple[str]],
         check_distance: bool = True,
-        atomic_distance_tolerance: float = 0.1,
+        distance_scale_factor: float = 0.1,
     ) -> List[Dict]:
         """Try to generate legal crystal structures with given configuration set(s).
 
         Parameters
         ----------
-        size: int
-            How many times to try for one configuration set.
+        attempts_number: int
+            How many times for trying for one Wyckoff configuration set.
+            For one try the result can be ``None``, which means the number of generated structure <= ``attempts_number``.
         check_distance: bool, optional
             Whether the atomic distance should be checked. default ``True``
-        atomic_distance_tolerance : float, optional
-            The tolerance of atomic distances when distance checking. Unit is Å,
+        distance_scale_factor : float, optional
+            Scale factor to determine the tolerance of atomic distances when distance checking. Unit is Å,
             When ``check_distance`` is ``True``, Any structure has
-            all_atomic_distance < (A_atom_covalent_radius + B_atom_covalent_radius) * (1 - atomic_distance_tolerance) will be rejected,
+            all_atomic_distance < (A_atom_covalent_radius + B_atom_covalent_radius) * (1 - distance_scale_factor) will be rejected,
             by default 0.1
         *cfgs: Dict[str, Tuple[str]]
             A tuple with Wyckoff configuration set(s).
@@ -170,36 +165,37 @@ class CrystalGenerator(object):
             ``volume: float``, ``lattice: list``, ``wyckoff_letters: list``,
             and ``coords: list``.
         """
-        assert size >= 1, 'size must be greater than 1'
+        assert attempts_number >= 1, 'attempts number must be greater than 1'
 
         if len(cfgs) > 0:
             return self._cg.gen_many(
-                size,
+                attempts_number,
                 check_distance,
-                atomic_distance_tolerance,
+                distance_scale_factor,
                 *cfgs,
             )
         return []
 
     def gen_many_iter(
         self,
-        size: int,
+        attempts_number: int,
         *cfgs: Dict[str, Tuple[str]],
         check_distance: bool = True,
-        atomic_distance_tolerance: float = 0.1,
+        distance_scale_factor: float = 0.1,
     ):
         """Try to generate legal crystal structures with given configuration set(s), iteratively.
 
         Parameters
         ----------
-        size: int
-            How many times to try for one configuration set.
+        attempts_number: int
+            How many times for trying for one Wyckoff configuration set.
+            For one try the result can be ``None``, which means the number of generated structure <= ``attempts_number``.
         check_distance: bool, optional
             Whether the atomic distance should be checked. default ``True``
-        atomic_distance_tolerance : float, optional
-            The tolerance of atomic distances when distance checking. Unit is Å,
+        distance_scale_factor : float, optional
+            Scale factor to determine the tolerance of atomic distances when distance checking. Unit is Å,
             When ``check_distance`` is ``True``, Any structure has
-            all_atomic_distance < (A_atom_covalent_radius + B_atom_covalent_radius) * (1 - atomic_distance_tolerance) will be rejected,
+            all_atomic_distance < (A_atom_covalent_radius + B_atom_covalent_radius) * (1 - distance_scale_factor) will be rejected,
             by default 0.1
         *cfgs: Dict[str, Tuple[str]]
             A tuple with Wyckoff configuration set(s).
@@ -214,12 +210,12 @@ class CrystalGenerator(object):
             ``volume: float``, ``lattice: list``, ``wyckoff_letters: list``,
             and ``coords: list``.
         """
-        assert size >= 1, 'size must be greater than 1'
+        assert attempts_number >= 1, 'attempts number must be greater than 1'
         for cfg in cfgs:
             yield cfg, self._cg.gen_many(
-                size,
+                attempts_number,
                 check_distance,
-                atomic_distance_tolerance,
+                distance_scale_factor,
                 cfg,
             )
 
@@ -230,6 +226,6 @@ class CrystalGenerator(object):
             \n    estimated_variance={self.estimated_variance},\
             \n    angle_range={self.angle_range},\
             \n    angle_tolerance={self.angle_tolerance},\
-            \n    max_recurrent={self.max_recurrent},\
+            \n    max_attempts_number={self.max_attempts_number},\
             \n    n_jobs={self.n_jobs}\
             \n)"
