@@ -1,6 +1,6 @@
 [package]
 name = 'crystallus'
-version = '0.1.5-beta'
+version = '0.1.5-beta1'
 authors = ['tsumina <liu.chang.1865@gmail.com>']
 homepage = 'https://github.com/yoshida-lab/crystallus'
 repository = 'https://github.com/yoshida-lab/crystallus'

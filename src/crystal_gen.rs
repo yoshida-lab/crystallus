@@ -18,7 +18,6 @@ impl CrystalGenerator {
     #[new]
     #[args(
         "*",
-        min_distance_tolerance = "0.15",
         angle_range = "(30., 150.)",
         angle_tolerance = "20.",
         max_recurrent = "5_000",
@@ -29,7 +28,6 @@ impl CrystalGenerator {
         spacegroup_num: usize,
         estimated_volume: Float,
         estimated_variance: Float,
-        min_distance_tolerance: Float,
         angle_range: (Float, Float),
         angle_tolerance: Float,
         max_recurrent: u16,
@@ -40,7 +38,6 @@ impl CrystalGenerator {
             spacegroup_num,
             estimated_volume,
             estimated_variance,
-            Some(min_distance_tolerance),
             Some(angle_range),
             Some(angle_tolerance),
             Some(max_recurrent),
@@ -60,11 +57,6 @@ impl CrystalGenerator {
     #[getter(spacegroup_num)]
     fn spacegroup_num(&self) -> PyResult<usize> {
         Ok(self._crystal_gen.spacegroup_num)
-    }
-
-    #[getter(min_distance_tolerance)]
-    fn min_distance_tolerance(&self) -> PyResult<Float> {
-        Ok(self._crystal_gen.min_distance_tolerance)
     }
 
     #[getter(max_recurrent)]
@@ -93,9 +85,15 @@ impl CrystalGenerator {
         self._crystal_gen.verbose = verbose;
         Ok(())
     }
-    #[text_signature = "($self, **cfg)"]
-    #[args(cfg = "**")]
-    fn gen_one(&self, py: Python<'_>, cfg: Option<&PyDict>) -> PyResult<PyObject> {
+    #[text_signature = "($self, check_distance, atomic_distance_tolerance, /, **cfg)"]
+    #[args(check_distance = true, atomic_distance_tolerance = "0.1", cfg = "**")]
+    fn gen_one(
+        &self,
+        py: Python<'_>,
+        check_distance: bool,
+        atomic_distance_tolerance: Float,
+        cfg: Option<&PyDict>,
+    ) -> PyResult<PyObject> {
         match cfg {
             Some(cfg) => {
                 let mut cfg: BTreeMap<&str, Vec<&str>> = cfg.extract()?;
@@ -105,7 +103,12 @@ impl CrystalGenerator {
                     elements.append(&mut vec![elem; letter.len()]);
                     wyckoff_letters.append(letter);
                 }
-                let cry = self._crystal_gen.gen(&elements, &wyckoff_letters);
+                let cry = self._crystal_gen.gen(
+                    &elements,
+                    &wyckoff_letters,
+                    Some(check_distance),
+                    Some(atomic_distance_tolerance),
+                );
 
                 match cry {
                     Err(e) => Err(exceptions::ValueError::py_err(e.to_string())),
@@ -113,6 +116,7 @@ impl CrystalGenerator {
                         let dict = PyDict::new(py);
                         dict.set_item("spacegroup_num", w.spacegroup_num)?;
                         dict.set_item("volume", w.volume)?;
+                        dict.set_item("attempts_until_done", w.attempts_until_done)?;
                         dict.set_item(
                             "lattice",
                             w.lattice
@@ -142,9 +146,16 @@ impl CrystalGenerator {
         }
     }
 
-    #[args(cfgs = "*")]
-    #[text_signature = "($self, size, /, *cfgs)"]
-    fn gen_many(&self, py: Python<'_>, size: i32, cfgs: &PyTuple) -> PyResult<PyObject> {
+    #[text_signature = "($self, size, check_distance, atomic_distance_tolerance, /, *cfgs)"]
+    #[args(check_distance = true, atomic_distance_tolerance = "0.1", cfgs = "*")]
+    fn gen_many(
+        &self,
+        py: Python<'_>,
+        size: i32,
+        check_distance: bool,
+        atomic_distance_tolerance: Float,
+        cfgs: &PyTuple,
+    ) -> PyResult<PyObject> {
         let mut cfgs: Vec<BTreeMap<&str, Vec<&str>>> =
             match cfgs.extract() {
                 Ok(m) => m,
@@ -176,7 +187,14 @@ impl CrystalGenerator {
                 ret.append(&mut py.allow_threads(move || {
                     (0..size)
                         .into_par_iter()
-                        .map(|_| self._crystal_gen.gen(&elements, &wyckoff_letters))
+                        .map(|_| {
+                            self._crystal_gen.gen(
+                                &elements,
+                                &wyckoff_letters,
+                                Some(check_distance),
+                                Some(atomic_distance_tolerance),
+                            )
+                        })
                         .filter_map(Result::ok)
                         .collect::<Vec<crystal_>>()
                 }));
@@ -194,7 +212,14 @@ impl CrystalGenerator {
                     ret.append(&mut py.allow_threads(move || {
                         (0..size)
                             .into_par_iter()
-                            .map(|_| self._crystal_gen.gen(&elements, &wyckoff_letters))
+                            .map(|_| {
+                                self._crystal_gen.gen(
+                                    &elements,
+                                    &wyckoff_letters,
+                                    Some(check_distance),
+                                    Some(atomic_distance_tolerance),
+                                )
+                            })
                             .filter_map(Result::ok)
                             .collect::<Vec<crystal_>>()
                     }));
@@ -209,6 +234,7 @@ impl CrystalGenerator {
             let dict = PyDict::new(py);
             dict.set_item("spacegroup_num", crystal.spacegroup_num)?;
             dict.set_item("volume", crystal.volume)?;
+            dict.set_item("attempts_until_done", crystal.attempts_until_done)?;
             dict.set_item(
                 "lattice",
                 crystal
