@@ -1,6 +1,6 @@
 [package]
 name = 'libcrystal'
-version = '0.1.4'
+version = '0.1.5'
 authors = ['tsumina <liu.chang.1865@gmail.com>']
 edition = '2018'
 workspace = '..'

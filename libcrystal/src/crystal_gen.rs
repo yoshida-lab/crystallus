@@ -45,7 +45,6 @@ pub struct Crystal<'a> {
     pub particles: Array2<Float>,
     pub elements: Vec<&'a str>,
     pub wyckoff_letters: Vec<&'a str>,
-    pub attempts_until_done: u16,
 }
 
 #[derive(Debug, Clone)]
@@ -64,7 +63,7 @@ pub type LatticeFn =
 // #[derive(Debug, Clone, PartialEq)]
 pub struct CrystalGenerator<'a> {
     pub spacegroup_num: usize,
-    pub max_recurrent: u16,
+    pub max_attempts_number: u16,
     pub verbose: bool,
     wy_pos_generator: HashMap<&'a str, (usize, WyckoffPos)>,
     lattice_gen: LatticeFn,
@@ -77,7 +76,7 @@ impl<'a> CrystalGenerator<'a> {
         estimated_variance: Float,
         angle_range: Option<(Float, Float)>,
         angle_tolerance: Option<Float>,
-        max_recurrent: Option<u16>,
+        max_attempts_number: Option<u16>,
         verbose: Option<bool>,
     ) -> Result<CrystalGenerator<'a>, CrystalGeneratorError> {
         if !(1..=230).contains(&spacegroup_num) {
@@ -133,14 +132,14 @@ impl<'a> CrystalGenerator<'a> {
         let angle_dist = Uniform::new_inclusive(angle_range.0, angle_range.1);
         let volume_dist = Normal::new(estimated_volume, estimated_variance).unwrap();
 
-        let max_recurrent = max_recurrent.unwrap_or(5_000);
+        let max_attempts_number = max_attempts_number.unwrap_or(5_000);
         let lattice_gen: LatticeFn = match spacegroup_num {
             // Triclinic, α≠β≠γ≠；a≠b≠c
             1..=2 => Box::new(move || {
                 let mut rng = thread_rng();
                 let vol: Float = rng.sample(volume_dist).abs();
 
-                for _ in 0..max_recurrent {
+                for _ in 0..max_attempts_number {
                     let angles: Vec<Float> = rng.sample_iter(angle_dist).take(3).collect();
                     // gen angles conditional
                     let sum = angles.iter().sum::<Float>();
@@ -164,7 +163,7 @@ impl<'a> CrystalGenerator<'a> {
                     }
                 }
                 return Err(CrystalGeneratorError(
-                    "reached the max recurrent number (in lattice generation)".to_owned(),
+                    "reached the max attempts (in lattice generation)".to_owned(),
                 ));
             }),
             // Monoclinic, α=γ=90°，β≠90°；a≠b≠c
@@ -174,7 +173,7 @@ impl<'a> CrystalGenerator<'a> {
 
                 // gen angles conditional
                 let mut angles = vec![90 as Float, 0., 90.];
-                for _ in 0..max_recurrent {
+                for _ in 0..max_attempts_number {
                     let beta = rng.sample(angle_dist);
 
                     if beta != 90. {
@@ -191,7 +190,7 @@ impl<'a> CrystalGenerator<'a> {
                     }
                 }
                 return Err(CrystalGeneratorError(
-                    "reached the max recurrent number (in lattice generation)".to_owned(),
+                    "reached the max attempts (in lattice generation)".to_owned(),
                 ));
             }),
             // Orthorhombic, α=β=γ=90°；a≠b≠c
@@ -201,7 +200,7 @@ impl<'a> CrystalGenerator<'a> {
 
                 // gen angles conditional
                 let angles = vec![90 as Float; 3];
-                for _ in 0..max_recurrent {
+                for _ in 0..max_attempts_number {
                     let mut abc: Vec<Float> = rng.sample_iter(length_dist).take(2).collect();
                     // c = a*b*c / a*b
                     let c: Float = vol / abc.iter().product::<Float>();
@@ -212,7 +211,7 @@ impl<'a> CrystalGenerator<'a> {
                     }
                 }
                 return Err(CrystalGeneratorError(
-                    "reached the max recurrent number (in lattice generation)".to_owned(),
+                    "reached the max attempts (in lattice generation)".to_owned(),
                 ));
             }),
             // Tetragonal, α=β=γ=90°；a=b≠c
@@ -222,7 +221,7 @@ impl<'a> CrystalGenerator<'a> {
 
                 // gen angles conditional
                 let angles = vec![90 as Float; 3];
-                for _ in 0..max_recurrent {
+                for _ in 0..max_attempts_number {
                     let a = rng.sample(length_dist);
                     let c: Float = vol / (a * a);
 
@@ -232,7 +231,7 @@ impl<'a> CrystalGenerator<'a> {
                     }
                 }
                 return Err(CrystalGeneratorError(
-                    "reached the max recurrent number (in lattice generation)".to_owned(),
+                    "reached the max attempts (in lattice generation)".to_owned(),
                 ));
             }),
             // Trigonal
@@ -243,7 +242,7 @@ impl<'a> CrystalGenerator<'a> {
                     // α=β=90°，γ=120°；a=b≠c
                     // gen angles conditional
                     let angles = vec![90 as Float, 90., 120.];
-                    for _ in 0..max_recurrent {
+                    for _ in 0..max_attempts_number {
                         let a = rng.sample(length_dist);
                         // c = V / a^2 sinγ
                         let sin_gamma = (120 as Float).to_radians().sin();
@@ -255,11 +254,11 @@ impl<'a> CrystalGenerator<'a> {
                         }
                     }
                     return Err(CrystalGeneratorError(
-                        "reached the max recurrent number (in lattice generation)".to_owned(),
+                        "reached the max attempts (in lattice generation)".to_owned(),
                     ));
                 } else {
                     // α=β=γ<90°；a=b=c
-                    for _ in 0..max_recurrent {
+                    for _ in 0..max_attempts_number {
                         // gen angles conditional
                         let angles = vec![rng.sample(Uniform::new(angle_range.0, 90.)); 3];
                         let c: Float =
@@ -271,7 +270,7 @@ impl<'a> CrystalGenerator<'a> {
                         }
                     }
                     return Err(CrystalGeneratorError(
-                        "reached the max recurrent number (in lattice generation)".to_owned(),
+                        "reached the max attempts (in lattice generation)".to_owned(),
                     ));
                 }
             }),
@@ -282,7 +281,7 @@ impl<'a> CrystalGenerator<'a> {
 
                 // gen angles conditional
                 let angles = vec![90 as Float, 90., 120.];
-                for _ in 0..max_recurrent {
+                for _ in 0..max_attempts_number {
                     let a = rng.sample(length_dist);
                     // c = V / a^2 sinγ
                     let sin_gamma = (120 as Float).to_radians().sin();
@@ -294,7 +293,7 @@ impl<'a> CrystalGenerator<'a> {
                     }
                 }
                 return Err(CrystalGeneratorError(
-                    "reached the max recurrent number (in lattice generation)".to_owned(),
+                    "reached the max attempts (in lattice generation)".to_owned(),
                 ));
             }),
             // Cubic, α=β=γ=90°；a=b=c
@@ -317,7 +316,7 @@ impl<'a> CrystalGenerator<'a> {
             wy_pos_generator,
             verbose,
             lattice_gen,
-            max_recurrent,
+            max_attempts_number,
         })
     }
 
@@ -364,10 +363,10 @@ impl<'a> CrystalGenerator<'a> {
         elements: &Vec<&'a str>,
         wyckoff_letters: &Vec<&'a str>,
         check_distance: Option<bool>,
-        atomic_distance_tolerance: Option<Float>,
+        distance_scale_factor: Option<Float>,
     ) -> Result<Crystal, CrystalGeneratorError> {
         let checker = check_distance.unwrap_or(true);
-        let atomic_distance_tolerance = atomic_distance_tolerance.unwrap_or(0.1);
+        let distance_scale_factor = distance_scale_factor.unwrap_or(0.1);
         let mut elements_: Vec<&'a str> = Vec::new();
         let mut wyckoff_letters_: Vec<&'a str> = Vec::new();
         let mut wy_gens_: Vec<&WyckoffPos> = Vec::new();
@@ -387,63 +386,59 @@ impl<'a> CrystalGenerator<'a> {
                 }
             }
         }
-        for counter in 1..=self.max_recurrent {
-            // generate lengths and angles, then transfer to a lattice object
-            let (abc, angles, vol) = (self.lattice_gen)()?;
-            let lattice = CrystalGenerator::lattice_from(abc, angles);
+        // generate lengths and angles, then transfer to a lattice object
+        let (abc, angles, vol) = (self.lattice_gen)()?;
+        let lattice = CrystalGenerator::lattice_from(abc, angles);
 
-            // generate particles for each element, respectively
-            let mut all_particles: Vec<Array2<Float>> = Vec::new();
-            for g in wy_gens_.iter() {
-                let particles = g.random_gen();
-                all_particles.push(particles)
-            }
+        // generate particles for each element, respectively
+        let mut all_particles: Vec<Array2<Float>> = Vec::new();
+        for g in wy_gens_.iter() {
+            let particles = g.random_gen();
+            all_particles.push(particles)
+        }
 
-            // join all generated particles in their generated order
-            let particles = stack(
-                Axis(0),
-                &all_particles
-                    .iter()
-                    .map(|p| p.view())
-                    .collect::<Vec<ArrayView2<Float>>>()[..],
-            )
-            .unwrap();
+        // join all generated particles in their generated order
+        let particles = stack(
+            Axis(0),
+            &all_particles
+                .iter()
+                .map(|p| p.view())
+                .collect::<Vec<ArrayView2<Float>>>()[..],
+        )
+        .unwrap();
 
-            // check distances between all particles,
-            // if ok, return generated crystal object
-            if !checker {
+        // check distances between all particles,
+        // if ok, return generated crystal object
+        if !checker {
+            return Ok(Crystal {
+                spacegroup_num: self.spacegroup_num,
+                elements: elements_,
+                wyckoff_letters: wyckoff_letters_,
+                volume: vol,
+                lattice,
+                particles,
+            });
+        } else {
+            if self.check_distance(
+                &lattice,
+                &particles,
+                &elements_,
+                &wyckoff_letters_,
+                &distance_scale_factor,
+            ) {
                 return Ok(Crystal {
                     spacegroup_num: self.spacegroup_num,
                     elements: elements_,
                     wyckoff_letters: wyckoff_letters_,
                     volume: vol,
-                    attempts_until_done: counter,
                     lattice,
                     particles,
                 });
-            } else {
-                if self.check_distance(
-                    &lattice,
-                    &particles,
-                    &elements_,
-                    &wyckoff_letters_,
-                    &atomic_distance_tolerance,
-                ) {
-                    return Ok(Crystal {
-                        spacegroup_num: self.spacegroup_num,
-                        elements: elements_,
-                        wyckoff_letters: wyckoff_letters_,
-                        volume: vol,
-                        attempts_until_done: counter,
-                        lattice,
-                        particles,
-                    });
-                }
             }
-        }
-        return Err(CrystalGeneratorError(
-            "reached the max recurrent number, please try to set `estimated_volume` and/or `min_distance_tolerance` bigger. (in crystal structure generation)".to_owned(),
+            return Err(CrystalGeneratorError(
+            "Atomic distance check failed for the randomly generated structure. If you tried many times and still get this error, please try to set `estimated_volume` and/or `distance_scale_factor` bigger. (in crystal structure generation)".to_owned(),
         ));
+        }
     }
 
     #[inline]
@@ -485,7 +480,7 @@ impl<'a> CrystalGenerator<'a> {
         particles: &Array2<Float>,
         elements: &Vec<&str>,
         wyckoff_letters: &Vec<&str>,
-        atomic_distance_tolerance: &Float,
+        distance_scale_factor: &Float,
     ) -> bool {
         match _pbc(lattice, particles) {
             Ok(distance_matrix) => {
@@ -494,7 +489,7 @@ impl<'a> CrystalGenerator<'a> {
                 for i in 0..(ii - 1) {
                     for j in (i + 1)..ii {
                         if distance_matrix[[i, j]]
-                            < (radius[i] + radius[j]) * (1. - atomic_distance_tolerance)
+                            < (radius[i] + radius[j]) * (1. - distance_scale_factor)
                         {
                             if self.verbose {
                                 println!(
@@ -504,7 +499,7 @@ impl<'a> CrystalGenerator<'a> {
                                     elements[j],
                                     wyckoff_letters[j],
                                     distance_matrix[[i, j]],
-                                    (radius[i] + radius[j]) * (1. - atomic_distance_tolerance)
+                                    (radius[i] + radius[j]) * (1. - distance_scale_factor)
                                 );
                             }
                             return false;
@@ -573,8 +568,8 @@ mod tests {
         }
     }
     #[test]
-    #[should_panic(expected = "reached the max recurrent number (in lattice generation)")]
-    fn should_panic_when_reach_max_recurrent() {
+    #[should_panic(expected = "reached the max attempts (in lattice generation)")]
+    fn should_panic_when_reach_max_attempts_number() {
         let tmp = CrystalGenerator::from_spacegroup_num(
             2,
             1000.,
