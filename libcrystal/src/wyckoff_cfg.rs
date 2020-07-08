@@ -20,7 +20,7 @@ impl error::Error for WyckoffCfgGeneratorError {}
 
 pub struct WyckoffCfgGenerator {
     // pool:       [multiplicity, letter, reuse]
-    candidate_pool: Vec<(usize, &'static str, &'static bool)>,
+    candidate_pool: Vec<(usize, String, bool)>,
     pub max_recurrent: u16,
     scale: u8,
 }
@@ -38,9 +38,9 @@ impl WyckoffCfgGenerator {
 
         // get wyckoff letters and corresponding multiplicity
         //                 [multiplicity, letter, reuse]
-        let candidate_pool: Vec<(usize, &str, &bool)> = WY[spacegroup_num - 1]
+        let candidate_pool: Vec<(usize, String, bool)> = WY[spacegroup_num - 1]
             .iter()
-            .map(|(&letter, (multiplicity, reuse, _))| (*multiplicity, letter, reuse))
+            .map(|(letter, (multiplicity, reuse, _))| (*multiplicity, *letter, *reuse))
             .collect();
 
         let scale = match SPG_TYPES[spacegroup_num - 1] {
@@ -65,10 +65,10 @@ impl WyckoffCfgGenerator {
     pub fn gen(
         &self,
         composition: &BTreeMap<String, Float>,
-    ) -> Result<BTreeMap<String, Vec<&str>>, WyckoffCfgGeneratorError> {
+    ) -> Result<BTreeMap<String, Vec<String>>, WyckoffCfgGeneratorError> {
         let mut checker = false;
-        let mut ret_: BTreeMap<String, Vec<&str>> = BTreeMap::new(); // such like: {Li: (b, a), O: (d,)}, where 'b', 'a', and 'd' are wyckoff letters
-        let mut used: Vec<&str> = Vec::new(); // such like: [b, d]
+        let mut ret_: BTreeMap<String, Vec<String>> = BTreeMap::new(); // such like: {Li: (b, a), O: (d,)}, where 'b', 'a', and 'd' are wyckoff letters
+        let mut used: Vec<String> = Vec::new(); // such like: [b, d]
         let mut composition_: HashMap<String, Float> = composition
             .iter()
             .map(|(k, v)| (k.clone(), v * self.scale as Float))

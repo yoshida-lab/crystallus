@@ -150,7 +150,8 @@ impl CrystalGenerator {
     fn gen_many(
         &self,
         py: Python<'_>,
-        attempts_number: i32,
+        expect_size: usize,
+        max_attempts: usize,
         check_distance: bool,
         distance_scale_factor: Float,
         cfgs: &PyTuple,
@@ -177,26 +178,29 @@ impl CrystalGenerator {
             1 => {
                 let mut elements: Vec<&str> = Vec::new();
                 let mut wyckoff_letters: Vec<&str> = Vec::new();
+                let mut counter = expect_size;
                 for (elem, letter) in cfgs[0].iter_mut() {
                     elements.append(&mut vec![elem; letter.len()]);
                     wyckoff_letters.append(letter);
                 }
 
-                //Do works
-                ret.append(&mut py.allow_threads(move || {
-                    (0..attempts_number)
-                        .into_par_iter()
-                        .map(|_| {
-                            self._crystal_gen.gen(
-                                &elements,
-                                &wyckoff_letters,
-                                Some(check_distance),
-                                Some(distance_scale_factor),
-                            )
-                        })
-                        .filter_map(Result::ok)
-                        .collect::<Vec<crystal_>>()
-                }));
+                while (ret.len() < expect_size) && (counter <= max_attempts) {
+                    //Do works
+                    ret.append(&mut py.allow_threads(move || {
+                        (0..expect_size)
+                            .into_par_iter()
+                            .map(|_| {
+                                self._crystal_gen.gen(
+                                    &elements,
+                                    &wyckoff_letters,
+                                    Some(check_distance),
+                                    Some(distance_scale_factor),
+                                )
+                            })
+                            .filter_map(Result::ok)
+                            .collect::<Vec<crystal_>>()
+                    }));
+                }
             }
             _ => {
                 for cfg in cfgs.iter_mut() {
@@ -209,7 +213,7 @@ impl CrystalGenerator {
 
                     //Do works
                     ret.append(&mut py.allow_threads(move || {
-                        (0..attempts_number)
+                        (0..expect_size)
                             .into_par_iter()
                             .map(|_| {
                                 self._crystal_gen.gen(
