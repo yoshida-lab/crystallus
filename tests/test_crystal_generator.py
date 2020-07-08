@@ -77,3 +77,9 @@ def test_gen_many_3():
     # make condition losser
     structure = cg.gen_many(1000, comp, distance_scale_factor=0.5)
     assert len(structure) > 0
+
+
+def test_gen_many_4():
+    cg = CrystalGenerator(207, 1000, 20)
+    with pytest.raises(ValueError, match="`max_attempts` can not be smaller than `expect_size`"):
+        cg.gen_many(10, {'C': ('a', 'b'), 'O': ('d',)}, max_attempts=2)

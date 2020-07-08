@@ -374,8 +374,8 @@ impl<'a> CrystalGenerator {
         for (e, w) in elements.iter().zip(wyckoff_letters) {
             match self.wy_pos_generator.get(w) {
                 Some((multiplicity, wy_gen)) => {
-                    elements_.append(&mut vec![*e; *multiplicity]);
-                    wyckoff_letters_.append(&mut vec![*w; *multiplicity]);
+                    elements_.append(&mut vec![e.to_string(); *multiplicity]);
+                    wyckoff_letters_.append(&mut vec![w.to_string(); *multiplicity]);
                     wy_gens_.push(wy_gen);
                 }
                 None => {
@@ -703,7 +703,7 @@ mod tests {
             [0.5, 0.53196704, 0.25],
             [0.5, 0.46803296, 0.75],
         ]);
-        let elements: Vec<String> = Vec::new();
+        let mut elements: Vec<String> = Vec::new();
         elements.append(&mut vec!["Ti".to_owned(); 8]);
         elements.append(&mut vec!["O".to_owned(); 16]);
         assert_eq!(

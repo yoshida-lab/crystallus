@@ -9,7 +9,7 @@ use libcrystal::{Crystal as crystal_, CrystalGenerator as crystal_gen, Float};
 #[pyclass(module = "crystallus")]
 #[text_signature = "(spacegroup_num, estimated_volume, estimated_variance, *, min_distance_tolerance, angle_range, angle_tolerance, max_recurrent, n_jobs)"]
 pub struct CrystalGenerator {
-    _crystal_gen: crystal_gen<'static>,
+    _crystal_gen: crystal_gen,
     _n_jobs: i16,
 }
 
@@ -96,11 +96,11 @@ impl CrystalGenerator {
     ) -> PyResult<PyObject> {
         match cfg {
             Some(cfg) => {
-                let mut cfg: BTreeMap<&str, Vec<&str>> = cfg.extract()?;
-                let mut elements: Vec<&str> = Vec::new();
-                let mut wyckoff_letters: Vec<&str> = Vec::new();
+                let mut cfg: BTreeMap<String, Vec<String>> = cfg.extract()?;
+                let mut elements: Vec<String> = Vec::new();
+                let mut wyckoff_letters: Vec<String> = Vec::new();
                 for (elem, letter) in cfg.iter_mut() {
-                    elements.append(&mut vec![elem; letter.len()]);
+                    elements.append(&mut vec![(*elem).clone(); letter.len()]);
                     wyckoff_letters.append(letter);
                 }
                 let cry = self._crystal_gen.gen(
@@ -145,18 +145,23 @@ impl CrystalGenerator {
         }
     }
 
-    #[text_signature = "($self, size, check_distance, distance_scale_factor, /, *cfgs)"]
-    #[args(check_distance = true, distance_scale_factor = "0.1", cfgs = "*")]
+    #[text_signature = "($self, expect_size, max_attempts, check_distance, distance_scale_factor, /, *cfgs)"]
+    #[args(
+        max_attempts = "None",
+        check_distance = true,
+        distance_scale_factor = "0.1",
+        cfgs = "*"
+    )]
     fn gen_many(
         &self,
         py: Python<'_>,
         expect_size: usize,
-        max_attempts: usize,
+        max_attempts: Option<usize>,
         check_distance: bool,
         distance_scale_factor: Float,
         cfgs: &PyTuple,
     ) -> PyResult<PyObject> {
-        let mut cfgs: Vec<BTreeMap<&str, Vec<&str>>> =
+        let mut cfgs: Vec<BTreeMap<String, Vec<String>>> =
             match cfgs.extract() {
                 Ok(m) => m,
                 Err(_) => return Err(exceptions::ValueError::py_err(
@@ -168,6 +173,12 @@ impl CrystalGenerator {
             std::env::set_var("RAYON_NUM_THREADS", self._n_jobs.to_string());
         }
 
+        let max_attempts = max_attempts.unwrap_or(expect_size);
+        if max_attempts < expect_size {
+            return Err(exceptions::ValueError::py_err(
+                "`max_attempts` can not be smaller than `expect_size`",
+            ));
+        }
         let mut ret: Vec<crystal_> = Vec::new();
         match cfgs.len() {
             0 => {
@@ -176,17 +187,17 @@ impl CrystalGenerator {
                 ));
             }
             1 => {
-                let mut elements: Vec<&str> = Vec::new();
-                let mut wyckoff_letters: Vec<&str> = Vec::new();
                 let mut counter = expect_size;
+                let mut elements: Vec<String> = Vec::new();
+                let mut wyckoff_letters: Vec<String> = Vec::new();
                 for (elem, letter) in cfgs[0].iter_mut() {
-                    elements.append(&mut vec![elem; letter.len()]);
+                    elements.append(&mut vec![(*elem).clone(); letter.len()]);
                     wyckoff_letters.append(letter);
                 }
 
                 while (ret.len() < expect_size) && (counter <= max_attempts) {
                     //Do works
-                    ret.append(&mut py.allow_threads(move || {
+                    ret.append(&mut py.allow_threads(|| {
                         (0..expect_size)
                             .into_par_iter()
                             .map(|_| {
@@ -200,32 +211,39 @@ impl CrystalGenerator {
                             .filter_map(Result::ok)
                             .collect::<Vec<crystal_>>()
                     }));
+                    counter += expect_size;
                 }
             }
             _ => {
+                let mut ref_ = 0;
                 for cfg in cfgs.iter_mut() {
-                    let mut elements: Vec<&str> = Vec::new();
-                    let mut wyckoff_letters: Vec<&str> = Vec::new();
+                    let mut counter = expect_size;
+                    let mut elements: Vec<String> = Vec::new();
+                    let mut wyckoff_letters: Vec<String> = Vec::new();
                     for (elem, letter) in cfg.iter_mut() {
-                        elements.append(&mut vec![elem; letter.len()]);
+                        elements.append(&mut vec![(*elem).clone(); letter.len()]);
                         wyckoff_letters.append(letter);
                     }
 
-                    //Do works
-                    ret.append(&mut py.allow_threads(move || {
-                        (0..expect_size)
-                            .into_par_iter()
-                            .map(|_| {
-                                self._crystal_gen.gen(
-                                    &elements,
-                                    &wyckoff_letters,
-                                    Some(check_distance),
-                                    Some(distance_scale_factor),
-                                )
-                            })
-                            .filter_map(Result::ok)
-                            .collect::<Vec<crystal_>>()
-                    }));
+                    while (ret.len() - ref_ < expect_size) && (counter <= max_attempts) {
+                        //Do works
+                        ret.append(&mut py.allow_threads(|| {
+                            (0..expect_size)
+                                .into_par_iter()
+                                .map(|_| {
+                                    self._crystal_gen.gen(
+                                        &elements,
+                                        &wyckoff_letters,
+                                        Some(check_distance),
+                                        Some(distance_scale_factor),
+                                    )
+                                })
+                                .filter_map(Result::ok)
+                                .collect::<Vec<crystal_>>()
+                        }));
+                        counter += expect_size;
+                    }
+                    ref_ = ret.len();
                 }
             }
         }
