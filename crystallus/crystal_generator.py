@@ -3,7 +3,7 @@
 # license that can be found in the LICENSE file.
 
 from .crystallus import CrystalGenerator as _CG
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Union
 
 __all__ = ["CrystalGenerator"]
 
@@ -132,8 +132,9 @@ class CrystalGenerator(object):
 
     def gen_many(
         self,
-        attempts_number: int,
+        expect_size: int,
         *cfgs: Dict[str, Tuple[str]],
+        max_attempts: Union[int, None] = None,
         check_distance: bool = True,
         distance_scale_factor: float = 0.1,
     ) -> List[Dict]:
@@ -141,9 +142,17 @@ class CrystalGenerator(object):
 
         Parameters
         ----------
-        attempts_number: int
-            How many times for trying for one Wyckoff configuration set.
-            For one try the result can be ``None``, which means the number of generated structure <= ``attempts_number``.
+        expect_size: int
+            The expectation of the total amount of generated structures based on one Wyckoff.
+            Whatever one generated structure is legal or not, **one attempt** will be consumed. 
+            Please noted that the result could be empty when no structures matched the atomic distance conditions.
+            When the number of generated structures are not fit your expectation too far away,
+            try to give the parameter ``max_attempts`` a higher value..
+        max_attempts: Union[int, None], optional
+            Specify the max number of attempts in structure generation.
+            When the number of generated structures is small than ``expect_size``, new rounds of structure generation will be performed.
+            The generation will stop until the number of generated structures is more than ``expect_size, `` or the total attempts reach the ``max_attempts``.
+            Default ``None``, means ``max_attempts`` equal to parameter ``expect_size``.
         check_distance: bool, optional
             Whether the atomic distance should be checked. default ``True``
         distance_scale_factor : float, optional
@@ -165,11 +174,12 @@ class CrystalGenerator(object):
             ``volume: float``, ``lattice: list``, ``wyckoff_letters: list``,
             and ``coords: list``.
         """
-        assert attempts_number >= 1, 'attempts number must be greater than 1'
+        assert expect_size >= 1, 'attempts number must be greater than 1'
 
         if len(cfgs) > 0:
             return self._cg.gen_many(
-                attempts_number,
+                expect_size,
+                max_attempts,
                 check_distance,
                 distance_scale_factor,
                 *cfgs,
@@ -178,8 +188,9 @@ class CrystalGenerator(object):
 
     def gen_many_iter(
         self,
-        attempts_number: int,
+        expect_size: int,
         *cfgs: Dict[str, Tuple[str]],
+        max_attempts: Union[int, None] = None,
         check_distance: bool = True,
         distance_scale_factor: float = 0.1,
     ):
@@ -187,9 +198,17 @@ class CrystalGenerator(object):
 
         Parameters
         ----------
-        attempts_number: int
-            How many times for trying for one Wyckoff configuration set.
-            For one try the result can be ``None``, which means the number of generated structure <= ``attempts_number``.
+        expect_size: int
+            The expectation of the total amount of generated structures based on one Wyckoff.
+            Whatever one generated structure is legal or not, **one attempt** will be consumed. 
+            Please noted that the result could be empty when no structures matched the atomic distance conditions.
+            When the number of generated structures are not fit your expectation too far away,
+            try to give the parameter ``max_attempts`` a higher value..
+        max_attempts: Union[int, None], optional
+            Specify the max number of attempts in structure generation.
+            When the number of generated structures is small than ``expect_size``, new rounds of structure generation will be performed.
+            The generation will stop until the number of generated structures is more than ``expect_size, `` or the total attempts reach the ``max_attempts``.
+            Default ``None``, means ``max_attempts`` equal to parameter ``expect_size``.
         check_distance: bool, optional
             Whether the atomic distance should be checked. default ``True``
         distance_scale_factor : float, optional
@@ -210,10 +229,11 @@ class CrystalGenerator(object):
             ``volume: float``, ``lattice: list``, ``wyckoff_letters: list``,
             and ``coords: list``.
         """
-        assert attempts_number >= 1, 'attempts number must be greater than 1'
+        assert expect_size >= 1, 'attempts number must be greater than 1'
         for cfg in cfgs:
             yield cfg, self._cg.gen_many(
-                attempts_number,
+                expect_size,
+                max_attempts,
                 check_distance,
                 distance_scale_factor,
                 cfg,

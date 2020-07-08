@@ -1,6 +1,6 @@
 [package]
 name = 'crystallus'
-version = '0.1.5-beta2'
+version = '0.2.0-dev1'
 authors = ['tsumina <liu.chang.1865@gmail.com>']
 homepage = 'https://github.com/yoshida-lab/crystallus'
 repository = 'https://github.com/yoshida-lab/crystallus'
@@ -42,7 +42,7 @@ version = "0.11.1"
 
 [dependencies.libcrystal]
 path = 'libcrystal'
-version = '0.1.5'
+version = '^0.2.1'
 features = []
 
 [features]

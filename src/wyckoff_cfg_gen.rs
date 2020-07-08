@@ -99,7 +99,7 @@ impl WyckoffCfgGenerator {
                     };
 
                 //Do works
-                let ret: Vec<BTreeMap<String, Vec<&str>>> = py.allow_threads(|| {
+                let ret: Vec<BTreeMap<String, Vec<String>>> = py.allow_threads(|| {
                     (0..size)
                         .into_par_iter()
                         .map(|_| wy.gen(&self.composition))
@@ -130,7 +130,7 @@ impl WyckoffCfgGenerator {
                 }
                 for (wy, sp_num) in tmp.iter().zip(spacegroup_num) {
                     //Do works
-                    let ret: Vec<BTreeMap<String, Vec<&str>>> = py.allow_threads(move || {
+                    let ret: Vec<BTreeMap<String, Vec<String>>> = py.allow_threads(move || {
                         (0..size)
                             .into_par_iter()
                             .map(|_| wy.gen(&self.composition))

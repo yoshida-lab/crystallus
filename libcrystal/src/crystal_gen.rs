@@ -16,8 +16,7 @@ use std::{error, fmt};
 // Covalent radius for element (Z=1) H to Cm (Z=96)
 const COVALENT_RADIUS: &'static str = std::include_str!("covalent_radius.json");
 lazy_static! {
-    static ref RADIUS: HashMap<&'static str, Float> =
-        serde_json::from_str(COVALENT_RADIUS).unwrap();
+    static ref RADIUS: HashMap<String, Float> = serde_json::from_str(COVALENT_RADIUS).unwrap();
 }
 
 #[inline]
@@ -38,13 +37,13 @@ pub fn pbc_all_distances(
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Crystal<'a> {
+pub struct Crystal {
     pub spacegroup_num: usize,
     pub volume: Float,
     pub lattice: Array2<Float>,
     pub particles: Array2<Float>,
-    pub elements: Vec<&'a str>,
-    pub wyckoff_letters: Vec<&'a str>,
+    pub elements: Vec<String>,
+    pub wyckoff_letters: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -61,15 +60,15 @@ impl Error for CrystalGeneratorError {}
 pub type LatticeFn =
     Box<dyn Fn() -> Result<(Vec<Float>, Vec<Float>, Float), CrystalGeneratorError> + Send + Sync>;
 // #[derive(Debug, Clone, PartialEq)]
-pub struct CrystalGenerator<'a> {
+pub struct CrystalGenerator {
     pub spacegroup_num: usize,
     pub max_attempts_number: u16,
     pub verbose: bool,
-    wy_pos_generator: HashMap<&'a str, (usize, WyckoffPos)>,
+    wy_pos_generator: HashMap<String, (usize, WyckoffPos)>,
     lattice_gen: LatticeFn,
 }
 
-impl<'a> CrystalGenerator<'a> {
+impl<'a> CrystalGenerator {
     pub fn from_spacegroup_num(
         spacegroup_num: usize,
         estimated_volume: Float,
@@ -78,7 +77,7 @@ impl<'a> CrystalGenerator<'a> {
         angle_tolerance: Option<Float>,
         max_attempts_number: Option<u16>,
         verbose: Option<bool>,
-    ) -> Result<CrystalGenerator<'a>, CrystalGeneratorError> {
+    ) -> Result<CrystalGenerator, CrystalGeneratorError> {
         if !(1..=230).contains(&spacegroup_num) {
             return Err(CrystalGeneratorError(
                 "space group number is illegal".to_owned(),
@@ -104,10 +103,10 @@ impl<'a> CrystalGenerator<'a> {
         let estimated_variance = estimated_variance * coefficient;
 
         // build wyckoff generators
-        let mut wy_pos_generator: HashMap<&'static str, (usize, WyckoffPos)> = HashMap::new();
+        let mut wy_pos_generator: HashMap<String, (usize, WyckoffPos)> = HashMap::new();
         WY[spacegroup_num - 1].iter().for_each(|(k, (m, _, p))| {
             wy_pos_generator.insert(
-                *k,
+                (*k).to_owned(),
                 (
                     *m,
                     WyckoffPos::from_str_and_shifts(p, shifts.clone()).unwrap(),
@@ -321,13 +320,14 @@ impl<'a> CrystalGenerator<'a> {
     }
 
     #[inline]
-    fn get_covalent_radius(element: &Vec<&str>) -> Vec<Float> {
+    fn get_covalent_radius(element: &Vec<String>) -> Vec<Float> {
         let mut ret: Vec<Float> = Vec::new();
         for e in element.iter() {
-            ret.push(RADIUS[e.clone()]);
+            ret.push(RADIUS[e]);
         }
         ret
     }
+
     #[inline]
     fn lattice_from(abc: Vec<Float>, angles: Vec<Float>) -> Array2<Float> {
         let (a, b, c, alpha, beta, gamma) = (
@@ -360,22 +360,22 @@ impl<'a> CrystalGenerator<'a> {
     #[inline]
     pub fn gen(
         &self,
-        elements: &Vec<&'a str>,
-        wyckoff_letters: &Vec<&'a str>,
+        elements: &Vec<String>,
+        wyckoff_letters: &Vec<String>,
         check_distance: Option<bool>,
         distance_scale_factor: Option<Float>,
     ) -> Result<Crystal, CrystalGeneratorError> {
         let checker = check_distance.unwrap_or(true);
         let distance_scale_factor = distance_scale_factor.unwrap_or(0.1);
-        let mut elements_: Vec<&'a str> = Vec::new();
-        let mut wyckoff_letters_: Vec<&'a str> = Vec::new();
+        let mut elements_: Vec<String> = Vec::new();
+        let mut wyckoff_letters_: Vec<String> = Vec::new();
         let mut wy_gens_: Vec<&WyckoffPos> = Vec::new();
         // test all wyckoff letters and build elements list
         for (e, w) in elements.iter().zip(wyckoff_letters) {
             match self.wy_pos_generator.get(w) {
                 Some((multiplicity, wy_gen)) => {
-                    elements_.append(&mut vec![*e; *multiplicity]);
-                    wyckoff_letters_.append(&mut vec![*w; *multiplicity]);
+                    elements_.append(&mut vec![e.to_string(); *multiplicity]);
+                    wyckoff_letters_.append(&mut vec![w.to_string(); *multiplicity]);
                     wy_gens_.push(wy_gen);
                 }
                 None => {
@@ -478,8 +478,8 @@ impl<'a> CrystalGenerator<'a> {
         &self,
         lattice: &Array2<Float>,
         particles: &Array2<Float>,
-        elements: &Vec<&str>,
-        wyckoff_letters: &Vec<&str>,
+        elements: &Vec<String>,
+        wyckoff_letters: &Vec<String>,
         distance_scale_factor: &Float,
     ) -> bool {
         match _pbc(lattice, particles) {
@@ -521,7 +521,13 @@ mod tests {
     use ndarray::arr2;
     #[test]
     fn test_get_covalent_radius() {
-        let elements = vec!["Li", "P", "O", "Ti", "Pd"];
+        let elements = vec![
+            "Li".to_owned(),
+            "P".to_owned(),
+            "O".to_owned(),
+            "Ti".to_owned(),
+            "Pd".to_owned(),
+        ];
         assert_eq!(
             CrystalGenerator::get_covalent_radius(&elements),
             vec![1.21, 1.04, 0.64, 1.52, 1.33]
@@ -697,12 +703,17 @@ mod tests {
             [0.5, 0.53196704, 0.25],
             [0.5, 0.46803296, 0.75],
         ]);
-        let elements = vec![
-            "Ti", "Ti", "Ti", "Ti", "Ti", "Ti", "Ti", "Ti", "O", "O", "O", "O", "O", "O", "O", "O",
-            "O", "O", "O", "O", "O", "O", "O", "O",
-        ];
+        let mut elements: Vec<String> = Vec::new();
+        elements.append(&mut vec!["Ti".to_owned(); 8]);
+        elements.append(&mut vec!["O".to_owned(); 16]);
         assert_eq!(
-            tmp.check_distance(&lattice, &particles, &elements, &vec!["a"; 24], &0.1),
+            tmp.check_distance(
+                &lattice,
+                &particles,
+                &elements,
+                &vec!["a".to_owned(); 24],
+                &0.1
+            ),
             false
         );
     }
@@ -720,10 +731,24 @@ mod tests {
         ------------------------------------------------------
         */
         let cg = CrystalGenerator::from_spacegroup_num(63, 1000., 10., None, None, None, None)?;
-        let cry = cg.gen(&vec!["Li", "P"], &vec!["a", "b"], None, None)?;
+        let cry = cg.gen(
+            &vec!["Li".to_owned(), "P".to_owned()],
+            &vec!["a".to_owned(), "b".to_owned()],
+            None,
+            None,
+        )?;
         assert_eq!(
             cry.elements,
-            vec!["Li", "Li", "Li", "Li", "P", "P", "P", "P"]
+            vec![
+                "Li".to_owned(),
+                "Li".to_owned(),
+                "Li".to_owned(),
+                "Li".to_owned(),
+                "P".to_owned(),
+                "P".to_owned(),
+                "P".to_owned(),
+                "P".to_owned()
+            ]
         );
         assert_eq!(cry.particles.shape(), [8, 3]);
         assert_eq!(

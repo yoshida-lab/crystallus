@@ -40,6 +40,6 @@ pub const SPG_TYPES: [char; 230] = [
 /// Wyckoff table for all 230 space groups.
 const WYCKOFFS: &'static str = std::include_str!("wyckoffs.json");
 lazy_static! {
-    static ref WY: Vec<HashMap<&'static str, (usize, bool, &'static str)>> =
+    static ref WY: Vec<HashMap<String, (usize, bool, String)>> =
         serde_json::from_str(WYCKOFFS).unwrap();
 }
