@@ -176,15 +176,15 @@ class CrystalGenerator(object):
         """
         assert expect_size >= 1, 'attempts number must be greater than 1'
 
-        if len(cfgs) > 0:
-            return self._cg.gen_many(
-                expect_size,
-                max_attempts,
-                check_distance,
-                distance_scale_factor,
-                *cfgs,
-            )
-        return []
+        # if len(cfgs) > 0:
+        return self._cg.gen_many(
+            expect_size,
+            max_attempts,
+            check_distance,
+            distance_scale_factor,
+            *cfgs,
+        )
+        # return []
 
     def gen_many_iter(
         self,

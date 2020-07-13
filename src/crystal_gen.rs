@@ -182,9 +182,7 @@ impl CrystalGenerator {
         let mut ret: Vec<crystal_> = Vec::new();
         match cfgs.len() {
             0 => {
-                return Err(exceptions::ValueError::py_err(
-                    "no configurations for generation",
-                ));
+                return Ok(PyTuple::new(py, Vec::<PyDict>::new()).into_py(py));
             }
             1 => {
                 let mut counter = expect_size;

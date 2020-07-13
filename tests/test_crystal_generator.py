@@ -28,6 +28,19 @@ def test_gen_one():
 
 def test_gen_many_1():
     cg = CrystalGenerator(207, 1000, 20)
+    structure = cg.gen_many(10)
+
+    assert len(structure) == 0
+
+
+def test_gen_many_2():
+    cg = CrystalGenerator(207, 1000, 20)
+    with pytest.raises(ValueError, match="`max_attempts` can not be smaller than `expect_size`"):
+        cg.gen_many(10, {'C': ('a', 'b'), 'O': ('d',)}, max_attempts=2)
+
+
+def test_gen_many_3():
+    cg = CrystalGenerator(207, 1000, 20)
     structure = cg.gen_many(10, {'C': ('a', 'b'), 'O': ('d',)})
 
     assert len(structure) == 10
@@ -37,7 +50,7 @@ def test_gen_many_1():
     assert structure[0]['coords'] == structure[2]['coords']
 
 
-def test_gen_many_2():
+def test_gen_many_4():
     cg = CrystalGenerator(207, 1000, 20)
     cfgs = (
         {
@@ -58,7 +71,7 @@ def test_gen_many_2():
     assert structure[5]['wyckoff_letters'] == structure[9]['wyckoff_letters']
 
 
-def test_gen_many_3():
+def test_gen_many_5():
     cg = CrystalGenerator(33, 1168, 15)
     comp = {
         'Ag': ['a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'],
@@ -77,9 +90,3 @@ def test_gen_many_3():
     # make condition losser
     structure = cg.gen_many(1000, comp, distance_scale_factor=0.5)
     assert len(structure) > 0
-
-
-def test_gen_many_4():
-    cg = CrystalGenerator(207, 1000, 20)
-    with pytest.raises(ValueError, match="`max_attempts` can not be smaller than `expect_size`"):
-        cg.gen_many(10, {'C': ('a', 'b'), 'O': ('d',)}, max_attempts=2)
