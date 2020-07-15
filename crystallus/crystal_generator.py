@@ -38,7 +38,7 @@ class CrystalGenerator(object):
         angle_tolerance : float, optional
             The Tolerance of minimum of the degree of angles when lattice generation, by default 20.
         max_attempts_number : int, optional
-            Max recurrent until generate a reasonable structure, by default 5_000
+            Max recurrent until generate a reasonable lattice, by default is 5_000
         n_jobs : int, optional
             Number of cpu cores when parallel calculation, by default -1
         verbose: bool, optional
