@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from .crystallus import CrystalGenerator as _CG
+from copy import deepcopy
 from typing import Tuple, Dict, List, Union, Sequence
 
 __all__ = ["CrystalGenerator"]
@@ -79,6 +80,8 @@ class CrystalGenerator(object):
         self._angle_range = angle_range
         self._angle_tolerance = angle_tolerance
         self._max_attempts_number = max_attempts_number
+        self._empirical_coords = empirical_coords
+        self._empirical_coords_variance = empirical_coords_variance
         self._spacegroup_num = spacegroup_num
 
     @property
@@ -100,6 +103,14 @@ class CrystalGenerator(object):
     @property
     def max_attempts_number(self):
         return self._max_attempts_number
+
+    @property
+    def empirical_coords(self):
+        return deepcopy(self._empirical_coords)
+
+    @property
+    def empirical_coords_variance(self):
+        return self._empirical_coords_variance
 
     @property
     def spacegroup_num(self):
@@ -269,5 +280,7 @@ class CrystalGenerator(object):
             \n    angle_range={self.angle_range},\
             \n    angle_tolerance={self.angle_tolerance},\
             \n    max_attempts_number={self.max_attempts_number},\
+            \n    empirical_coords={'...' if self._empirical_coords is not None else None},\
+            \n    empirical_coords_variance={self.empirical_coords_variance},\
             \n    n_jobs={self.n_jobs}\
             \n)"

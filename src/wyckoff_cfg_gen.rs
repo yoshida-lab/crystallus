@@ -18,6 +18,7 @@ use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyTuple};
 use rayon::prelude::*;
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use libcrystal::{Float, WyckoffCfgGenerator as wyckoff_cfg_gen};
 
@@ -25,6 +26,7 @@ use libcrystal::{Float, WyckoffCfgGenerator as wyckoff_cfg_gen};
 #[text_signature = "(max_recurrent, n_jobs, **composition)"]
 pub struct WyckoffCfgGenerator {
     composition: BTreeMap<String, Float>,
+    priority: Option<HashMap<String, Float>>,
     max_recurrent: u16,
     _n_jobs: i16,
 }
@@ -32,18 +34,28 @@ pub struct WyckoffCfgGenerator {
 #[pymethods]
 impl WyckoffCfgGenerator {
     #[new]
-    #[args("*", max_recurrent = "1_000", n_jobs = "-1", composition = "**")]
+    #[args(
+        "*",
+        max_recurrent = "1_000",
+        n_jobs = "-1",
+        priority = "None",
+        composition = "**"
+    )]
     fn new(
         max_recurrent: Option<u16>,
         n_jobs: Option<i16>,
+        priority: Option<&PyDict>,
         composition: Option<&PyDict>,
     ) -> PyResult<Self> {
         let composition = composition.clone();
+        let priority: Option<HashMap<String, Float>> =
+            priority.map_or_else(|| None, |s| s.extract().ok());
         match composition {
             Some(cfg) => {
                 let composition: BTreeMap<String, Float> = cfg.extract()?;
                 Ok(WyckoffCfgGenerator {
                     max_recurrent: max_recurrent.unwrap_or(1000),
+                    priority,
                     composition,
                     _n_jobs: n_jobs.unwrap_or(-1),
                 })
@@ -70,8 +82,11 @@ impl WyckoffCfgGenerator {
 
     #[text_signature = "($self, spacegroup_num)"]
     fn gen_one(&self, py: Python<'_>, spacegroup_num: usize) -> PyResult<PyObject> {
-        let wy =
-            wyckoff_cfg_gen::from_spacegroup_num(spacegroup_num, Some(self.max_recurrent), None);
+        let wy = wyckoff_cfg_gen::from_spacegroup_num(
+            spacegroup_num,
+            Some(self.max_recurrent),
+            self.priority.clone(),
+        );
         match wy {
             Ok(wy) => match wy.gen(&self.composition) {
                 Err(e) => Err(PyValueError::new_err(e.to_string())),
@@ -106,7 +121,7 @@ impl WyckoffCfgGenerator {
                 let wy = match wyckoff_cfg_gen::from_spacegroup_num(
                     sp_num,
                     Some(self.max_recurrent),
-                    None,
+                    self.priority.clone(),
                 ) {
                     Ok(wy) => wy,
                     Err(e) => return Err(PyValueError::new_err(e.to_string())),
@@ -136,7 +151,7 @@ impl WyckoffCfgGenerator {
                     let wy = match wyckoff_cfg_gen::from_spacegroup_num(
                         *sp_num,
                         Some(self.max_recurrent),
-                        None,
+                        self.priority.clone(),
                     ) {
                         Ok(wy) => wy,
                         Err(e) => return Err(PyValueError::new_err(e.to_string())),

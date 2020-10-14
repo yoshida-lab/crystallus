@@ -44,18 +44,6 @@ impl WyckoffCfgGenerator {
     /// * `max_recurrent` - The Maximum number of retries. Option
     /// * `priority` - Given the sampling priorities for each Wyckoff letter. Option
     ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let wy = WyckoffCfgGenerator::from_spacegroup_num(167, None, None)?; // R-3c
-    /// let cfg = wy.gen(&BTreeMap::from_iter(
-    ///         vec![
-    ///             ("Ca".to_owned(), 2 as Float),
-    ///             ("C".to_owned(), 2.),
-    ///             ("O".to_owned(), 6.),
-    ///         ]
-    ///         .into_iter(),
-    ///     ))?;
     /// ```
     pub fn from_spacegroup_num(
         spacegroup_num: usize,

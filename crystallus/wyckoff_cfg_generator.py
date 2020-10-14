@@ -13,12 +13,18 @@
 # limitations under the License.
 
 from typing import Dict, List, Tuple
+from copy import deepcopy
 from .crystallus import WyckoffCfgGenerator as _WYG
 
 
 class WyckoffCfgGenerator(object):
 
-    def __init__(self, *, max_recurrent=1_000, n_jobs=-1, **composition):
+    def __init__(self,
+                 *,
+                 max_recurrent: int = 1_000,
+                 n_jobs: int = -1,
+                 priority: Dict[str, float] = None,
+                 **composition):
         """A generator for possible Wyckoff configuration generation.
 
         Parameters
@@ -27,12 +33,25 @@ class WyckoffCfgGenerator(object):
             Max recurrent until generate a reasonable structure, by default 5_000
         n_jobs : int, optional
             Number of cpu cores when parallel calculation, by default -1
+        priority:
+            Priority for Wyckoff position (WP). Select a WP is equal to sampling
+            from an Uniform distribution. By default, all possible WPs have a
+            priority `1`. Using this parameter to overwrite the default values.
+            For example, by default, space group 167 has WP `[a, b, c, d, e, f]`
+            with priority `1` for each. When we give `priority` a values like
+            `{a: 2, b: 2, e: 0}`, then the new priority will be
+            `{a: 2, b: 2, c: 1, d: 1, e: 0, f: 1}`. We generating, the selection
+            probability of each WP will be `{a: 2/7, b: 2/7, c: 1/7, d: 1,/7 e: 0, f: 1/7}`.
         composition: Dict
             Composition of compounds in the primitive cell; should be formated
             as {<element symbol>: <ratio in float>}.
         """
 
-        self._wyg = _WYG(max_recurrent=max_recurrent, n_jobs=n_jobs, **composition)
+        self._wyg = _WYG(max_recurrent=max_recurrent,
+                         n_jobs=n_jobs,
+                         priority=priority,
+                         **composition)
+        self._priority = priority
         self._composition = composition
 
     @property
@@ -45,7 +64,11 @@ class WyckoffCfgGenerator(object):
 
     @property
     def composition(self):
-        return self._composition
+        return deepcopy(self._composition)
+
+    @property
+    def priority(self):
+        return deepcopy(self._priority)
 
     @n_jobs.setter
     def n_jobs(self, n):
@@ -116,5 +139,6 @@ class WyckoffCfgGenerator(object):
         return f"WyckoffCfgGenerator(\
             \n    max_recurrent={self.max_recurrent},\
             \n    n_jobs={self.n_jobs}\
-            \n    composition={self.composition}\
+            \n    priority={self._priority}\
+            \n    composition={self._composition}\
             \n)"
