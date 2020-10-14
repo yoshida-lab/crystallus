@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::{Float, SPG_TYPES, WY};
-use rand::{thread_rng, Rng};
+use rand::{distributions::WeightedIndex, thread_rng, Rng};
 use std::collections::{BTreeMap, HashMap};
 use std::{error, fmt};
 
@@ -29,16 +29,38 @@ impl fmt::Display for WyckoffCfgGeneratorError {
 impl error::Error for WyckoffCfgGeneratorError {}
 
 pub struct WyckoffCfgGenerator {
-    // pool:       [multiplicity, letter, reuse]
-    candidate_pool: Vec<(usize, String, bool)>,
     pub max_recurrent: u16,
+    // pool:       [multiplicity, letter, reuse, probability]
+    candidate_pool: Vec<(usize, String, bool, Float)>,
     scale: u8,
 }
 
 impl WyckoffCfgGenerator {
+    /// Initialize from a space group number.
+    ///
+    /// # Arguments
+    ///
+    /// * `spacegroup_num` - Specify the space group number. Should in *1 ~ 230*  
+    /// * `max_recurrent` - The Maximum number of retries. Option
+    /// * `priority` - Given the sampling priorities for each Wyckoff letter. Option
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let wy = WyckoffCfgGenerator::from_spacegroup_num(167, None, None)?; // R-3c
+    /// let cfg = wy.gen(&BTreeMap::from_iter(
+    ///         vec![
+    ///             ("Ca".to_owned(), 2 as Float),
+    ///             ("C".to_owned(), 2.),
+    ///             ("O".to_owned(), 6.),
+    ///         ]
+    ///         .into_iter(),
+    ///     ))?;
+    /// ```
     pub fn from_spacegroup_num(
         spacegroup_num: usize,
         max_recurrent: Option<u16>,
+        priority: Option<HashMap<String, Float>>,
     ) -> Result<WyckoffCfgGenerator, WyckoffCfgGeneratorError> {
         if !(1..=230).contains(&spacegroup_num) {
             return Err(WyckoffCfgGeneratorError(
@@ -48,10 +70,21 @@ impl WyckoffCfgGenerator {
 
         // get wyckoff letters and corresponding multiplicity
         //                 [multiplicity, letter, reuse]
-        let candidate_pool: Vec<(usize, String, bool)> = WY[spacegroup_num - 1]
+        let mut candidate_pool: Vec<(usize, String, bool, Float)> = WY[spacegroup_num - 1]
             .iter()
-            .map(|(letter, (multiplicity, reuse, _))| (*multiplicity, (*letter).clone(), *reuse))
+            .map(|(letter, (multiplicity, reuse, _))| {
+                (*multiplicity, (*letter).clone(), *reuse, 1.)
+            })
             .collect();
+
+        if let Some(prior) = priority {
+            // reset probability using `priority`
+            for (_, letter, _, proba) in candidate_pool.iter_mut() {
+                if prior.contains_key(letter) {
+                    *proba = prior[letter];
+                }
+            }
+        };
 
         let scale = match SPG_TYPES[spacegroup_num - 1] {
             'A' => 2,
@@ -72,6 +105,10 @@ impl WyckoffCfgGenerator {
     }
 
     /// Generate Wyckoff configurations for the given composition.
+    ///
+    /// # Arguments
+    ///
+    /// * `composition` - A composition of compound. For example: {'Li': 2, 'O': 6}
     pub fn gen(
         &self,
         composition: &BTreeMap<String, Float>,
@@ -95,12 +132,12 @@ impl WyckoffCfgGenerator {
 
             for (element, num) in composition_.iter_mut() {
                 // pool: [multiplicity, letter, reuse]
-                let pool: Vec<&(usize, String, bool)> = self
+                let pool: Vec<&(usize, String, bool, Float)> = self
                     .candidate_pool
                     .iter()
-                    .filter(|(multiplicity, letter, _)| {
+                    .filter(|(multiplicity, letter, _, proba)| {
                         // only the reuseable and multiplicity smaller than atom number letters
-                        !used.contains(&letter) && *multiplicity <= *num as usize
+                        !used.contains(&letter) && *multiplicity <= *num as usize && *proba > 0.
                     })
                     .collect();
 
@@ -109,9 +146,11 @@ impl WyckoffCfgGenerator {
                     checker = true;
                     continue;
                 }
-                // randomly select a suitable wyckoff letter
-                let n: usize = thread_rng().gen_range(0..upper);
-                let (multiplicity, letter, reuse) = &pool[n];
+                // random sampling a suitable wyckoff letter
+                // form `pool` by their probability
+                let dist = WeightedIndex::new(pool.iter().map(|(_, _, _, proba)| *proba)).unwrap();
+                let n = thread_rng().sample(dist);
+                let (multiplicity, letter, reuse, _) = &pool[n];
 
                 // record non-reuseable letters
                 if !reuse {
@@ -148,21 +187,21 @@ mod tests {
     use super::*;
     use std::iter::FromIterator;
     #[test]
-    fn test_wyckoff_cfg_generator() -> Result<(), WyckoffCfgGeneratorError> {
-        let wy = WyckoffCfgGenerator::from_spacegroup_num(30, None)?; // Pnc2
+    fn wyckoff_cfg_generator() -> Result<(), WyckoffCfgGeneratorError> {
+        let wy = WyckoffCfgGenerator::from_spacegroup_num(30, None, None)?; // Pnc2
         assert_eq!(wy.scale, 1);
-        let wy = WyckoffCfgGenerator::from_spacegroup_num(65, None)?; // Cmmm
+        let wy = WyckoffCfgGenerator::from_spacegroup_num(65, None, None)?; // Cmmm
         assert_eq!(wy.scale, 2);
-        let wy = WyckoffCfgGenerator::from_spacegroup_num(167, None)?; // R-3c
+        let wy = WyckoffCfgGenerator::from_spacegroup_num(167, None, None)?; // R-3c
         assert_eq!(wy.scale, 1);
-        let wy = WyckoffCfgGenerator::from_spacegroup_num(227, None)?; // Fd-3m
+        let wy = WyckoffCfgGenerator::from_spacegroup_num(227, None, None)?; // Fd-3m
         assert_eq!(wy.scale, 4);
         Ok(())
     }
 
     #[test]
-    fn test_wyckoff_cfg_gen() -> Result<(), WyckoffCfgGeneratorError> {
-        let wy = WyckoffCfgGenerator::from_spacegroup_num(167, None)?; // R-3c
+    fn wyckoff_cfg_gen_without_priority() -> Result<(), WyckoffCfgGeneratorError> {
+        let wy = WyckoffCfgGenerator::from_spacegroup_num(167, None, None)?; // R-3c
         let cfg = wy.gen(&BTreeMap::from_iter(
             vec![
                 ("Ca".to_owned(), 2 as Float),
@@ -206,6 +245,39 @@ mod tests {
                         ]
                         .into_iter(),
                     )
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn wyckoff_cfg_gen_with_priority() -> Result<(), WyckoffCfgGeneratorError> {
+        let prior = HashMap::from_iter(vec![("e".to_owned(), 0.)].into_iter());
+        let wy = WyckoffCfgGenerator::from_spacegroup_num(167, None, Some(prior))?; // R-3c
+        let cfg = wy.gen(&BTreeMap::from_iter(
+            vec![
+                ("Ca".to_owned(), 2 as Float),
+                ("C".to_owned(), 2.),
+                ("O".to_owned(), 6.),
+            ]
+            .into_iter(),
+        ))?;
+        assert!(
+            cfg == BTreeMap::from_iter(
+                vec![
+                    ("Ca".to_owned(), vec!["b".to_owned()]),
+                    ("C".to_owned(), vec!["a".to_owned()]),
+                    ("O".to_owned(), vec!["d".to_owned()])
+                ]
+                .into_iter(),
+            ) || cfg
+                == BTreeMap::from_iter(
+                    vec![
+                        ("Ca".to_owned(), vec!["a".to_owned()]),
+                        ("C".to_owned(), vec!["b".to_owned()]),
+                        ("O".to_owned(), vec!["d".to_owned()])
+                    ]
+                    .into_iter(),
+                )
         );
         Ok(())
     }

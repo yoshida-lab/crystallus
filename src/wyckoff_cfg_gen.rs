@@ -70,7 +70,8 @@ impl WyckoffCfgGenerator {
 
     #[text_signature = "($self, spacegroup_num)"]
     fn gen_one(&self, py: Python<'_>, spacegroup_num: usize) -> PyResult<PyObject> {
-        let wy = wyckoff_cfg_gen::from_spacegroup_num(spacegroup_num, Some(self.max_recurrent));
+        let wy =
+            wyckoff_cfg_gen::from_spacegroup_num(spacegroup_num, Some(self.max_recurrent), None);
         match wy {
             Ok(wy) => match wy.gen(&self.composition) {
                 Err(e) => Err(PyValueError::new_err(e.to_string())),
@@ -102,11 +103,14 @@ impl WyckoffCfgGenerator {
             }
             1 => {
                 let sp_num = spacegroup_num[0];
-                let wy =
-                    match wyckoff_cfg_gen::from_spacegroup_num(sp_num, Some(self.max_recurrent)) {
-                        Ok(wy) => wy,
-                        Err(e) => return Err(PyValueError::new_err(e.to_string())),
-                    };
+                let wy = match wyckoff_cfg_gen::from_spacegroup_num(
+                    sp_num,
+                    Some(self.max_recurrent),
+                    None,
+                ) {
+                    Ok(wy) => wy,
+                    Err(e) => return Err(PyValueError::new_err(e.to_string())),
+                };
 
                 //Do works
                 let ret: Vec<BTreeMap<String, Vec<String>>> = py.allow_threads(|| {
@@ -132,6 +136,7 @@ impl WyckoffCfgGenerator {
                     let wy = match wyckoff_cfg_gen::from_spacegroup_num(
                         *sp_num,
                         Some(self.max_recurrent),
+                        None,
                     ) {
                         Ok(wy) => wy,
                         Err(e) => return Err(PyValueError::new_err(e.to_string())),

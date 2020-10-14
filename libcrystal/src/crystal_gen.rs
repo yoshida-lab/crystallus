@@ -74,6 +74,8 @@ pub struct CrystalGenerator {
     pub spacegroup_num: usize,
     pub max_attempts_number: u16,
     pub verbose: bool,
+    empirical_coords: HashMap<String, Vec<(Float, Float, Float)>>,
+    empirical_coords_variance: Float,
     wy_pos_generator: HashMap<String, (usize, WyckoffPos)>,
     lattice_gen: LatticeFn,
 }
@@ -85,6 +87,8 @@ impl<'a> CrystalGenerator {
         estimated_variance: Float,
         angle_range: Option<(Float, Float)>,
         angle_tolerance: Option<Float>,
+        empirical_coords: Option<HashMap<String, Vec<(Float, Float, Float)>>>,
+        empirical_coords_variance: Option<Float>,
         max_attempts_number: Option<u16>,
         verbose: Option<bool>,
     ) -> Result<CrystalGenerator, CrystalGeneratorError> {
@@ -124,6 +128,7 @@ impl<'a> CrystalGenerator {
             );
         });
 
+        // set value for conditional parameters
         let angle_tolerance = angle_tolerance.unwrap_or(20.);
         let angle_range = angle_range.unwrap_or((30., 150.));
 
@@ -141,7 +146,15 @@ impl<'a> CrystalGenerator {
         let angle_dist = Uniform::new_inclusive(angle_range.0, angle_range.1);
         let volume_dist = Normal::new(estimated_volume, estimated_variance).unwrap();
 
+        let empirical_coords: HashMap<String, Vec<(Float, Float, Float)>> =
+            empirical_coords.unwrap_or_else(|| HashMap::new());
+        let empirical_coords_variance = empirical_coords_variance.unwrap_or_else(|| 0.01);
+
         let max_attempts_number = max_attempts_number.unwrap_or(5_000);
+
+        // generate `lattice generation` function
+        // note that closure in Rust is not a available type
+        // we have to use Box to wrap and save closure
         let lattice_gen: LatticeFn = match spacegroup_num {
             // Triclinic, α≠β≠γ≠；a≠b≠c
             1..=2 => Box::new(move || {
@@ -319,6 +332,8 @@ impl<'a> CrystalGenerator {
         Ok(CrystalGenerator {
             spacegroup_num,
             wy_pos_generator,
+            empirical_coords,
+            empirical_coords_variance,
             verbose,
             lattice_gen,
             max_attempts_number,
@@ -375,14 +390,14 @@ impl<'a> CrystalGenerator {
         let distance_scale_factor = distance_scale_factor.unwrap_or(0.1);
         let mut elements_: Vec<String> = Vec::new();
         let mut wyckoff_letters_: Vec<String> = Vec::new();
-        let mut wy_gens_: Vec<&WyckoffPos> = Vec::new();
+        let mut wy_gens_: Vec<(&WyckoffPos, &String)> = Vec::new();
         // test all wyckoff letters and build elements list
         for (e, w) in elements.iter().zip(wyckoff_letters) {
             match self.wy_pos_generator.get(w) {
                 Some((multiplicity, wy_gen)) => {
                     elements_.append(&mut vec![e.to_string(); *multiplicity]);
                     wyckoff_letters_.append(&mut vec![w.to_string(); *multiplicity]);
-                    wy_gens_.push(wy_gen);
+                    wy_gens_.push((wy_gen, w));
                 }
                 None => {
                     return Err(CrystalGeneratorError(format!(
@@ -398,9 +413,24 @@ impl<'a> CrystalGenerator {
 
         // generate particles for each element, respectively
         let mut all_particles: Vec<Array2<Float>> = Vec::new();
-        for g in wy_gens_.iter() {
-            let particles = g.random_gen();
-            all_particles.push(particles)
+        for (g, w) in wy_gens_.iter() {
+            if g.is_cached() {
+                all_particles.push(g.random_gen());
+            } else {
+                let particles: Array2<Float> = if let Some(template) = self.empirical_coords.get(*w)
+                {
+                    let mut rng = thread_rng();
+                    let n: usize = rng.gen_range(0, template.len());
+                    let (x, y, z) = template[n];
+                    let dist = Normal::new(0., self.empirical_coords_variance).unwrap();
+                    let perturbation: Vec<Float> = rng.sample_iter(dist).take(3).collect();
+                    let (p1, p2, p3) = (perturbation[0], perturbation[1], perturbation[2]);
+                    g.gen(x + p1, y + p2, z + p3)
+                } else {
+                    g.random_gen()
+                };
+                all_particles.push(particles)
+            }
         }
 
         // join all generated particles in their generated order
@@ -523,10 +553,12 @@ impl<'a> CrystalGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use approx::assert_ulps_eq;
+    use approx::{assert_abs_diff_eq, assert_ulps_eq};
     use ndarray::arr2;
+    use std::iter::FromIterator;
+
     #[test]
-    fn test_get_covalent_radius() {
+    fn get_covalent_radius() {
         let elements = vec![
             "Li".to_owned(),
             "P".to_owned(),
@@ -545,12 +577,15 @@ mod tests {
         expected = "called `Result::unwrap()` on an `Err` value: CrystalGeneratorError(\"space group number is illegal\")"
     )]
     fn should_panic_when_using_wrong_spacegroup_number() {
-        CrystalGenerator::from_spacegroup_num(300, 100., 10., None, None, None, None).unwrap();
+        CrystalGenerator::from_spacegroup_num(300, 100., 10., None, None, None, None, None, None)
+            .unwrap();
     }
 
     #[test]
     fn should_return_space_group_illegal_err() {
-        let tmp = CrystalGenerator::from_spacegroup_num(300, 100., 10., None, None, None, None);
+        let tmp = CrystalGenerator::from_spacegroup_num(
+            300, 100., 10., None, None, None, None, None, None,
+        );
         match tmp {
             Err(e) => assert_eq!(
                 format!("{}", e),
@@ -567,6 +602,8 @@ mod tests {
             100.,
             10.,
             Some((160., 170.)),
+            None,
+            None,
             None,
             None,
             None,
@@ -590,51 +627,27 @@ mod tests {
             None,
             None,
             None,
+            None,
+            None,
         )
         .unwrap();
         (tmp.lattice_gen)().unwrap();
     }
 
     #[test]
-    fn test_lll_reduce() -> Result<(), Box<dyn Error>> {
-        // lattice and frac coords are generated by this generator under space group 63,
-        // and the following values are validated by pymatgen
-        let lattice = vec![
-            [14.019043922424316, 0.0, -6.127918936726928e-07],
-            [
-                -4.818087404601101e-07,
-                6.381750106811523,
-                -2.7895515586351394e-07,
-            ],
-            [0.0, 0.0, 9.891742706298828],
-        ];
-        let (basis, mapping) = lll_reduce(&lattice, 0.75);
-        assert_eq!(
-            &basis,
-            &[
-                -4.818087404601101e-07,
-                6.381750106811523e+00,
-                -2.7895515586351394e-07,
-                0.00000000e+00,
-                0.00000000e+00,
-                9.891742706298828e+00,
-                1.4019043922424316e+01,
-                0.00000000e+00,
-                -6.127918936726928e-07
-            ],
-            // epsilon = 1e-7
-        );
-        assert_eq!(mapping, vec![0., 1., 0., 0., 0., 1., 1., 0., 0.]);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_create_crystal_generator_from_spacegroup_with_option(
-    ) -> Result<(), CrystalGeneratorError> {
-        let tmp =
-            CrystalGenerator::from_spacegroup_num(2, 1000., 0., Some((70., 71.)), None, None, None)
-                .unwrap();
+    fn create_crystal_generator_from_spacegroup_with_option() -> Result<(), CrystalGeneratorError> {
+        let tmp = CrystalGenerator::from_spacegroup_num(
+            2,
+            1000.,
+            0.,
+            Some((70., 71.)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         let (abc, angles, vol) = (tmp.lattice_gen)()?;
         assert_ulps_eq!(vol, 1000.);
         assert!((5. < abc[0]) & (abc[0] < 15.));
@@ -648,9 +661,11 @@ mod tests {
     }
 
     #[test]
-    fn test_crystal_generator_gen_lattice() -> Result<(), CrystalGeneratorError> {
-        let tmp =
-            CrystalGenerator::from_spacegroup_num(200, 1000., 10., None, None, None, None).unwrap();
+    fn crystal_generator_gen_lattice() -> Result<(), CrystalGeneratorError> {
+        let tmp = CrystalGenerator::from_spacegroup_num(
+            200, 1000., 10., None, None, None, None, None, None,
+        )
+        .unwrap();
         let (abc, angles, _vol) = (tmp.lattice_gen)()?;
         assert!(abc.len() == 3);
         assert!(abc.iter().eq(abc.iter()), "{}", true);
@@ -662,11 +677,13 @@ mod tests {
     }
 
     #[test]
-    fn test_check_distance() {
+    fn check_distance() {
         let tmp = CrystalGenerator::from_spacegroup_num(
             12,
             145.75949096679688,
             20.,
+            None,
+            None,
             None,
             None,
             None,
@@ -725,7 +742,7 @@ mod tests {
     }
 
     #[test]
-    fn test_crystal_generate() -> Result<(), CrystalGeneratorError> {
+    fn crystal_generate() -> Result<(), CrystalGeneratorError> {
         /*
         space group 63
         ======================================================
@@ -736,7 +753,9 @@ mod tests {
              4       |         a      | (0,0,0) (0,0,1/2)
         ------------------------------------------------------
         */
-        let cg = CrystalGenerator::from_spacegroup_num(63, 1000., 10., None, None, None, None)?;
+        let cg = CrystalGenerator::from_spacegroup_num(
+            63, 1000., 10., None, None, None, None, None, None,
+        )?;
         let cry = cg.gen(
             &vec!["Li".to_owned(), "P".to_owned()],
             &vec!["a".to_owned(), "b".to_owned()],
@@ -769,6 +788,145 @@ mod tests {
                 [0.5, 1., 0.],   // P
                 [0.5, 1., 0.5]   // P
             ])
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn crystal_generate_with_template_without_perturbation() -> Result<(), CrystalGeneratorError> {
+        /*
+        space group 167
+        =========================================================================
+        Multiplicity | Wyckoff letter |      Coordinates
+        -------------------------------------------------------------------------
+             6       |         e      | (x,0,1/4) (0,x,1/4) (-x,-x,1/4)
+                     |                | (-x,0,3/4) (0,-x,3/4) (x,x,3/4)
+        -------------------------------------------------------------------------
+             6       |         d      | (1/2,0,0) (0,1/2,0) (1/2,1/2,0)
+                     |                | (0,1/2,1/2) (1/2,0,1/2) (1/2,1/2,1/2)
+        -------------------------------------------------------------------------
+             4       |         c      | (0,0,z) (0,0,-z+1/2) (0,0,-z) (0,0,z+1/2)
+        -------------------------------------------------------------------------
+             2       |         b      | (0,0,0) (0,0,1/2)
+        -------------------------------------------------------------------------
+             2       |         a      | (0,0,1/4) (0,0,3/4)
+        -------------------------------------------------------------------------
+        */
+        let template: HashMap<String, Vec<(Float, Float, Float)>> = HashMap::from_iter(
+            vec![
+                ("c".to_owned(), vec![(0.2, 0., 0.0)]),
+                ("e".to_owned(), vec![(0.4, 0., 0.0)]),
+            ]
+            .into_iter(),
+        );
+        let cg = CrystalGenerator::from_spacegroup_num(
+            167,
+            1000.,
+            10.,
+            None,
+            None,
+            Some(template),
+            Some(0.),
+            None,
+            None,
+        )?;
+        let cry = cg.gen(
+            &vec!["Li".to_owned(), "P".to_owned()],
+            &vec!["c".to_owned(), "e".to_owned()],
+            Some(false),
+            None,
+        )?;
+        assert_eq!(
+            cry.elements,
+            vec![
+                "Li".to_owned(),
+                "Li".to_owned(),
+                "Li".to_owned(),
+                "Li".to_owned(),
+                "P".to_owned(),
+                "P".to_owned(),
+                "P".to_owned(),
+                "P".to_owned(),
+                "P".to_owned(),
+                "P".to_owned()
+            ]
+        );
+        assert_eq!(cry.particles.shape(), [10, 3]);
+        assert_abs_diff_eq!(
+            cry.particles,
+            arr2(&[
+                [0.2, 0.2, 0.2],  // Li
+                [0.3, 0.3, 0.3],  // Li
+                [0.8, 0.8, 0.8],  // Li
+                [0.7, 0.7, 0.7],  // Li
+                [0.4, 0.1, 0.25], // P
+                [0.25, 0.4, 0.1], // P
+                [0.1, 0.25, 0.4], // P
+                [0.6, 0.9, 0.75], // P
+                [0.75, 0.6, 0.9], // P
+                [0.9, 0.75, 0.6]  // P
+            ])
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn crystal_generate_with_template_with_perturbation() -> Result<(), CrystalGeneratorError> {
+        let template: HashMap<String, Vec<(Float, Float, Float)>> = HashMap::from_iter(
+            vec![
+                ("c".to_owned(), vec![(0.2, 0., 0.0)]),
+                ("e".to_owned(), vec![(0.4, 0., 0.0)]),
+            ]
+            .into_iter(),
+        );
+        let cg = CrystalGenerator::from_spacegroup_num(
+            167,
+            1000.,
+            10.,
+            None,
+            None,
+            Some(template),
+            Some(0.001),
+            None,
+            None,
+        )?;
+        let cry = cg.gen(
+            &vec!["Li".to_owned(), "P".to_owned()],
+            &vec!["c".to_owned(), "e".to_owned()],
+            Some(false),
+            None,
+        )?;
+        assert_eq!(
+            cry.elements,
+            vec![
+                "Li".to_owned(),
+                "Li".to_owned(),
+                "Li".to_owned(),
+                "Li".to_owned(),
+                "P".to_owned(),
+                "P".to_owned(),
+                "P".to_owned(),
+                "P".to_owned(),
+                "P".to_owned(),
+                "P".to_owned()
+            ]
+        );
+        assert_eq!(cry.particles.shape(), [10, 3]);
+        assert_abs_diff_eq!(
+            cry.particles,
+            arr2(&[
+                [0.2, 0.2, 0.2],  // Li
+                [0.3, 0.3, 0.3],  // Li
+                [0.8, 0.8, 0.8],  // Li
+                [0.7, 0.7, 0.7],  // Li
+                [0.4, 0.1, 0.25], // P
+                [0.25, 0.4, 0.1], // P
+                [0.1, 0.25, 0.4], // P
+                [0.6, 0.9, 0.75], // P
+                [0.75, 0.6, 0.9], // P
+                [0.9, 0.75, 0.6]  // P
+            ]),
+            epsilon = 1e-2
         );
         Ok(())
     }

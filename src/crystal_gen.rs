@@ -17,6 +17,7 @@ use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyTuple};
 use rayon::prelude::*;
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use libcrystal::{Crystal as crystal_, CrystalGenerator as crystal_gen, Float};
 
@@ -35,6 +36,8 @@ impl CrystalGenerator {
         angle_range = "(30., 150.)",
         angle_tolerance = "20.",
         max_attempts_number = "5_000",
+        empirical_coords = "None",
+        empirical_coords_variance = "0.01",
         n_jobs = "-1",
         verbose = true
     )]
@@ -44,16 +47,22 @@ impl CrystalGenerator {
         estimated_variance: Float,
         angle_range: (Float, Float),
         angle_tolerance: Float,
+        empirical_coords: Option<&PyDict>,
+        empirical_coords_variance: Float,
         max_attempts_number: u16,
         n_jobs: i16,
         verbose: bool,
     ) -> PyResult<Self> {
+        let empirical_coords: Option<HashMap<String, Vec<(Float, Float, Float)>>> =
+            empirical_coords.map_or_else(|| None, |s| s.extract().ok());
         let _crystal_gen = crystal_gen::from_spacegroup_num(
             spacegroup_num,
             estimated_volume,
             estimated_variance,
             Some(angle_range),
             Some(angle_tolerance),
+            empirical_coords,
+            Some(empirical_coords_variance),
             Some(max_attempts_number),
             Some(verbose),
         );

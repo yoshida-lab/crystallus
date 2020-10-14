@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .crystallus import CrystalGenerator as _CG
-from typing import Tuple, Dict, List, Union
+from typing import Tuple, Dict, List, Union, Sequence
 
 __all__ = ["CrystalGenerator"]
 
@@ -27,6 +27,8 @@ class CrystalGenerator(object):
                  *,
                  angle_range: Tuple[float, float] = (30., 150.),
                  angle_tolerance: float = 20.,
+                 empirical_coords: Dict[str, Sequence[Tuple[float, float, float]]] = None,
+                 empirical_coords_variance: float = 0.01,
                  max_attempts_number: int = 5_000,
                  n_jobs: int = -1,
                  verbose: bool = False):
@@ -47,6 +49,14 @@ class CrystalGenerator(object):
             The range of the degree of angles when lattice generation. by default (30., 150.)
         angle_tolerance : float, optional
             The Tolerance of minimum of the degree of angles when lattice generation, by default 20.
+        empirical_coords:
+            Empirical distributuion of atomic coordinations. The coordinations should be give as Wyckoff position
+            format. For example: for Wyckoff postion `c` in space group 167, the corresponding coordinations are
+            `(0,0,z) (0,0,-z+1/2) (0,0,-z) (0,0,z+1/2)`. So for some fraction coordination such as
+            `(0,0,0.3) (0,0,0.2) (0,0,0.7) (0,0,0.8)`, should give the empirical_coords as `(0, 0, 0.3)`.
+        empirical_coords_variance:
+            The variance of empirical_coords. This parameter will be used to build a Gaussian distribution.
+            The generator will sample values from the distribution as the perturbation of empirical coordinations.
         max_attempts_number : int, optional
             Max recurrent until generate a reasonable lattice, by default is 5_000
         n_jobs : int, optional
@@ -59,6 +69,8 @@ class CrystalGenerator(object):
                        estimated_variance=estimated_variance,
                        angle_range=angle_range,
                        angle_tolerance=angle_tolerance,
+                       empirical_coords=empirical_coords,
+                       empirical_coords_variance=empirical_coords_variance,
                        max_attempts_number=max_attempts_number,
                        n_jobs=n_jobs,
                        verbose=verbose)
