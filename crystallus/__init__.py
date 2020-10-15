@@ -21,4 +21,4 @@ from .crystallus import lll_reduce, pbc_all_distances
 
 __all__ = ["CrystalGenerator", "WyckoffCfgGenerator", "WyckoffDB", "SpaceGroupDB", "pbc_all_distances", "lll_reduce"]
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
