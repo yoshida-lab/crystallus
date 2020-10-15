@@ -75,6 +75,16 @@ class CrystalGenerator(object):
                        max_attempts_number=max_attempts_number,
                        n_jobs=n_jobs,
                        verbose=verbose)
+        # because empirical_coords will be converted into type
+        # `HashMap<String, Vec<(float, float, float)>>` in rust side
+        # we must grantee that the coordination is formatted as a tuple object.
+        if empirical_coords is not None:
+            for v in empirical_coords.values():
+                for v_ in v:
+                    if not isinstance(v_, tuple):
+                        raise ValueError(
+                            "all coordinations should be formatted as tuple like (0.1, 0.2, 0.4)")
+
         self._estimated_volume = estimated_volume
         self._estimated_variance = estimated_variance
         self._angle_range = angle_range

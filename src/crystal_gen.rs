@@ -53,8 +53,14 @@ impl CrystalGenerator {
         n_jobs: i16,
         verbose: bool,
     ) -> PyResult<Self> {
+        if let Some(t) = empirical_coords {
+            let t: HashMap<String, Vec<(Float, Float, Float)>> = t.extract()?;
+
+            println!("before {:#?}", t);
+        }
         let empirical_coords: Option<HashMap<String, Vec<(Float, Float, Float)>>> =
             empirical_coords.map_or_else(|| None, |s| s.extract().ok());
+        println!("after {:#?}", empirical_coords);
         let _crystal_gen = crystal_gen::from_spacegroup_num(
             spacegroup_num,
             estimated_volume,
