@@ -1,8 +1,14 @@
 dependencies:
   - numpy
+  - mkl
+  - mkl-service
+  - joblib
+  - pandas
   - pytest
   - pytest-benchmark
   - pip
   - pip:
+      - pymatgen
       - maturin
+      - matminer
       - peewee>=3.13.0

@@ -17,7 +17,6 @@ use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyTuple};
 use rayon::prelude::*;
 use std::collections::BTreeMap;
-use std::collections::HashMap;
 
 use libcrystal::{Crystal as crystal_, CrystalGenerator as crystal_gen, Float};
 
@@ -47,7 +46,7 @@ impl CrystalGenerator {
         estimated_variance: Float,
         angle_range: (Float, Float),
         angle_tolerance: Float,
-        empirical_coords: Option<&PyDict>,
+        empirical_coords: Option<&PyTuple>,
         empirical_coords_variance: Float,
         max_attempts_number: u16,
         n_jobs: i16,
@@ -56,7 +55,7 @@ impl CrystalGenerator {
         // convert Option<T: FromPyObject> -> Option<D>
         // if T.extract() return Err(e), pass this panic to python side
         let empirical_coords = if let Some(t) = empirical_coords {
-            let t: HashMap<String, Vec<Vec<Float>>> = t.extract()?;
+            let t: Vec<(String, Vec<Float>)> = t.extract()?;
             Some(t)
         } else {
             None

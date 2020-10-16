@@ -28,7 +28,7 @@ class CrystalGenerator(object):
                  *,
                  angle_range: Tuple[float, float] = (30., 150.),
                  angle_tolerance: float = 20.,
-                 empirical_coords: Dict[str, List[List[float]]] = None,
+                 empirical_coords: Union[Tuple[str, List[float]], None] = None,
                  empirical_coords_variance: float = 0.01,
                  max_attempts_number: int = 5_000,
                  n_jobs: int = -1,
@@ -52,9 +52,9 @@ class CrystalGenerator(object):
             The Tolerance of minimum of the degree of angles when lattice generation, by default 20.
         empirical_coords:
             Empirical distributuion of atomic coordinations. The coordinations should be give as Wyckoff position
-            format. For example: for Wyckoff postion `c` in space group 167, the corresponding coordinations are
-            `(0,0,z) (0,0,-z+1/2) (0,0,-z) (0,0,z+1/2)`. So for a set of fraction coordination such as
-            `[[0,0,0.3] [0,0,0.2] [0,0,0.7] [0,0,0.8]]`, should give the empirical_coords as `[0, 0, 0.3]`.
+            format. For example: for Wyckoff letter `c` in space group 167, the corresponding positions are
+            `(0,0,z) (0,0,-z+1/2) (0,0,-z) (0,0,z+1/2)`. So for a real fraction coordination such as
+            `[[0,0,0.3] [0,0,0.2] [0,0,0.7] [0,0,0.8]]`, the empirical coords should be given as `('c', [0, 0, 0.3])`.
         empirical_coords_variance:
             The variance of empirical_coords. This parameter will be used to build a Gaussian distribution.
             The generator will sample values from the distribution as the perturbation of empirical coordinations.
@@ -65,6 +65,19 @@ class CrystalGenerator(object):
         verbose: bool, optional
             Set to ``True`` to show more information.
         """
+        # pyo3 can not convert PyList to PyTuple automatically
+        if empirical_coords is not None and not isinstance(empirical_coords, tuple):
+            empirical_coords = tuple(empirical_coords)
+
+        self._estimated_volume = estimated_volume
+        self._estimated_variance = estimated_variance
+        self._angle_range = angle_range
+        self._angle_tolerance = angle_tolerance
+        self._max_attempts_number = max_attempts_number
+        self._empirical_coords = empirical_coords
+        self._empirical_coords_variance = empirical_coords_variance
+        self._spacegroup_num = spacegroup_num
+
         self._cg = _CG(spacegroup_num=spacegroup_num,
                        estimated_volume=estimated_volume,
                        estimated_variance=estimated_variance,
@@ -75,14 +88,6 @@ class CrystalGenerator(object):
                        max_attempts_number=max_attempts_number,
                        n_jobs=n_jobs,
                        verbose=verbose)
-        self._estimated_volume = estimated_volume
-        self._estimated_variance = estimated_variance
-        self._angle_range = angle_range
-        self._angle_tolerance = angle_tolerance
-        self._max_attempts_number = max_attempts_number
-        self._empirical_coords = empirical_coords
-        self._empirical_coords_variance = empirical_coords_variance
-        self._spacegroup_num = spacegroup_num
 
     @property
     def estimated_volume(self):

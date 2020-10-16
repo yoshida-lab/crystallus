@@ -69,6 +69,7 @@ impl Error for CrystalGeneratorError {}
 
 pub type LatticeFn =
     Box<dyn Fn() -> Result<(Vec<Float>, Vec<Float>, Float), CrystalGeneratorError> + Send + Sync>;
+
 // #[derive(Debug, Clone, PartialEq)]
 pub struct CrystalGenerator {
     pub spacegroup_num: usize,
@@ -87,7 +88,7 @@ impl<'a> CrystalGenerator {
         estimated_variance: Float,
         angle_range: Option<(Float, Float)>,
         angle_tolerance: Option<Float>,
-        empirical_coords: Option<HashMap<String, Vec<Vec<Float>>>>,
+        empirical_coords: Option<Vec<(String, Vec<Float>)>>,
         empirical_coords_variance: Option<Float>,
         max_attempts_number: Option<u16>,
         verbose: Option<bool>,
@@ -147,7 +148,15 @@ impl<'a> CrystalGenerator {
         let volume_dist = Normal::new(estimated_volume, estimated_variance).unwrap();
 
         let empirical_coords: HashMap<String, Vec<Vec<Float>>> =
-            empirical_coords.unwrap_or_else(|| HashMap::new());
+            if let Some(coords) = empirical_coords {
+                let mut ret = HashMap::new();
+                for (wy, coord) in coords.into_iter() {
+                    ret.entry(wy).or_insert(vec![]).push(coord);
+                }
+                ret
+            } else {
+                HashMap::new()
+            };
         let empirical_coords_variance = empirical_coords_variance.unwrap_or_else(|| 0.01);
 
         let max_attempts_number = max_attempts_number.unwrap_or(5_000);
@@ -568,7 +577,6 @@ mod tests {
     use super::*;
     use approx::{assert_abs_diff_eq, assert_ulps_eq};
     use ndarray::arr2;
-    use std::iter::FromIterator;
 
     #[test]
     fn get_covalent_radius() {
@@ -825,13 +833,10 @@ mod tests {
              2       |         a      | (0,0,1/4) (0,0,3/4)
         -------------------------------------------------------------------------
         */
-        let template: HashMap<String, Vec<Vec<Float>>> = HashMap::from_iter(
-            vec![
-                ("c".to_owned(), vec![vec![0.2, 0., 0.0]]),
-                ("e".to_owned(), vec![vec![0.4, 0., 0.0]]),
-            ]
-            .into_iter(),
-        );
+        let template: Vec<(String, Vec<Float>)> = vec![
+            ("c".to_owned(), vec![0.2, 0., 0.0]),
+            ("e".to_owned(), vec![0.4, 0., 0.0]),
+        ];
         let cg = CrystalGenerator::from_spacegroup_num(
             167,
             1000.,
@@ -885,13 +890,10 @@ mod tests {
 
     #[test]
     fn crystal_generate_with_template_with_perturbation() -> Result<(), CrystalGeneratorError> {
-        let template: HashMap<String, Vec<Vec<Float>>> = HashMap::from_iter(
-            vec![
-                ("c".to_owned(), vec![vec![0.2, 0., 0.0]]),
-                ("e".to_owned(), vec![vec![0.4, 0., 0.0]]),
-            ]
-            .into_iter(),
-        );
+        let template: Vec<(String, Vec<Float>)> = vec![
+            ("c".to_owned(), vec![0.2, 0., 0.0]),
+            ("e".to_owned(), vec![0.4, 0., 0.0]),
+        ];
         let cg = CrystalGenerator::from_spacegroup_num(
             167,
             1000.,
