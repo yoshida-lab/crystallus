@@ -14,7 +14,7 @@
 
 from .crystallus import CrystalGenerator as _CG
 from copy import deepcopy
-from typing import Tuple, Dict, List, Union, Sequence
+from typing import Tuple, Dict, List, Union
 
 __all__ = ["CrystalGenerator"]
 
@@ -28,7 +28,7 @@ class CrystalGenerator(object):
                  *,
                  angle_range: Tuple[float, float] = (30., 150.),
                  angle_tolerance: float = 20.,
-                 empirical_coords: Dict[str, Sequence[Tuple[float, float, float]]] = None,
+                 empirical_coords: Dict[str, List[List[float]]] = None,
                  empirical_coords_variance: float = 0.01,
                  max_attempts_number: int = 5_000,
                  n_jobs: int = -1,
@@ -53,8 +53,8 @@ class CrystalGenerator(object):
         empirical_coords:
             Empirical distributuion of atomic coordinations. The coordinations should be give as Wyckoff position
             format. For example: for Wyckoff postion `c` in space group 167, the corresponding coordinations are
-            `(0,0,z) (0,0,-z+1/2) (0,0,-z) (0,0,z+1/2)`. So for some fraction coordination such as
-            `(0,0,0.3) (0,0,0.2) (0,0,0.7) (0,0,0.8)`, should give the empirical_coords as `(0, 0, 0.3)`.
+            `(0,0,z) (0,0,-z+1/2) (0,0,-z) (0,0,z+1/2)`. So for a set of fraction coordination such as
+            `[[0,0,0.3] [0,0,0.2] [0,0,0.7] [0,0,0.8]]`, should give the empirical_coords as `[0, 0, 0.3]`.
         empirical_coords_variance:
             The variance of empirical_coords. This parameter will be used to build a Gaussian distribution.
             The generator will sample values from the distribution as the perturbation of empirical coordinations.
@@ -75,16 +75,6 @@ class CrystalGenerator(object):
                        max_attempts_number=max_attempts_number,
                        n_jobs=n_jobs,
                        verbose=verbose)
-        # because empirical_coords will be converted into type
-        # `HashMap<String, Vec<(float, float, float)>>` in rust side
-        # we must grantee that the coordination is formatted as a tuple object.
-        if empirical_coords is not None:
-            for v in empirical_coords.values():
-                for v_ in v:
-                    if not isinstance(v_, tuple):
-                        raise ValueError(
-                            "all coordinations should be formatted as tuple like (0.1, 0.2, 0.4)")
-
         self._estimated_volume = estimated_volume
         self._estimated_variance = estimated_variance
         self._angle_range = angle_range

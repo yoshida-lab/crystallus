@@ -74,7 +74,7 @@ pub struct CrystalGenerator {
     pub spacegroup_num: usize,
     pub max_attempts_number: u16,
     pub verbose: bool,
-    empirical_coords: HashMap<String, Vec<(Float, Float, Float)>>,
+    empirical_coords: HashMap<String, Vec<Vec<Float>>>,
     empirical_coords_variance: Float,
     wy_pos_generator: HashMap<String, (usize, WyckoffPos)>,
     lattice_gen: LatticeFn,
@@ -87,7 +87,7 @@ impl<'a> CrystalGenerator {
         estimated_variance: Float,
         angle_range: Option<(Float, Float)>,
         angle_tolerance: Option<Float>,
-        empirical_coords: Option<HashMap<String, Vec<(Float, Float, Float)>>>,
+        empirical_coords: Option<HashMap<String, Vec<Vec<Float>>>>,
         empirical_coords_variance: Option<Float>,
         max_attempts_number: Option<u16>,
         verbose: Option<bool>,
@@ -146,7 +146,7 @@ impl<'a> CrystalGenerator {
         let angle_dist = Uniform::new_inclusive(angle_range.0, angle_range.1);
         let volume_dist = Normal::new(estimated_volume, estimated_variance).unwrap();
 
-        let empirical_coords: HashMap<String, Vec<(Float, Float, Float)>> =
+        let empirical_coords: HashMap<String, Vec<Vec<Float>>> =
             empirical_coords.unwrap_or_else(|| HashMap::new());
         let empirical_coords_variance = empirical_coords_variance.unwrap_or_else(|| 0.01);
 
@@ -413,19 +413,32 @@ impl<'a> CrystalGenerator {
 
         // generate particles for each element, respectively
         let mut all_particles: Vec<Array2<Float>> = Vec::new();
+        let mut empirical_coords = self.empirical_coords.clone();
         for (g, w) in wy_gens_.iter() {
+            // if wyckoff position is fixed
+            // just use the cached values
             if g.is_cached() {
                 all_particles.push(g.random_gen());
             } else {
-                let particles: Array2<Float> = if let Some(template) = self.empirical_coords.get(*w)
+                // try to get empirical coordination
+                let particles: Array2<Float> = if let Some(template) = empirical_coords.get_mut(*w)
                 {
-                    let mut rng = thread_rng();
-                    let n: usize = rng.gen_range(0, template.len());
-                    let (x, y, z) = template[n];
-                    let dist = Normal::new(0., self.empirical_coords_variance).unwrap();
-                    let perturbation: Vec<Float> = rng.sample_iter(dist).take(3).collect();
-                    let (p1, p2, p3) = (perturbation[0], perturbation[1], perturbation[2]);
-                    g.gen(x + p1, y + p2, z + p3)
+                    // TODO: can be optimized?
+                    if template.len() > 0 {
+                        let mut rng = thread_rng();
+                        // sampling a template
+                        let n: usize = rng.gen_range(0, template.len());
+                        let tmp = template.remove(n); // remove used coord template
+                        let (x, y, z) = (tmp[0], tmp[1], tmp[2]);
+                        let dist = Normal::new(0., self.empirical_coords_variance).unwrap();
+                        // sampling a perturbation
+                        let perturbation: Vec<Float> = rng.sample_iter(dist).take(3).collect();
+                        let (p1, p2, p3) = (perturbation[0], perturbation[1], perturbation[2]);
+                        // gen with coord + perturbation
+                        g.gen(x + p1, y + p2, z + p3)
+                    } else {
+                        g.random_gen()
+                    }
                 } else {
                     g.random_gen()
                 };
@@ -812,10 +825,10 @@ mod tests {
              2       |         a      | (0,0,1/4) (0,0,3/4)
         -------------------------------------------------------------------------
         */
-        let template: HashMap<String, Vec<(Float, Float, Float)>> = HashMap::from_iter(
+        let template: HashMap<String, Vec<Vec<Float>>> = HashMap::from_iter(
             vec![
-                ("c".to_owned(), vec![(0.2, 0., 0.0)]),
-                ("e".to_owned(), vec![(0.4, 0., 0.0)]),
+                ("c".to_owned(), vec![vec![0.2, 0., 0.0]]),
+                ("e".to_owned(), vec![vec![0.4, 0., 0.0]]),
             ]
             .into_iter(),
         );
@@ -872,10 +885,10 @@ mod tests {
 
     #[test]
     fn crystal_generate_with_template_with_perturbation() -> Result<(), CrystalGeneratorError> {
-        let template: HashMap<String, Vec<(Float, Float, Float)>> = HashMap::from_iter(
+        let template: HashMap<String, Vec<Vec<Float>>> = HashMap::from_iter(
             vec![
-                ("c".to_owned(), vec![(0.2, 0., 0.0)]),
-                ("e".to_owned(), vec![(0.4, 0., 0.0)]),
+                ("c".to_owned(), vec![vec![0.2, 0., 0.0]]),
+                ("e".to_owned(), vec![vec![0.4, 0., 0.0]]),
             ]
             .into_iter(),
         );
