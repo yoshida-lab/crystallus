@@ -49,7 +49,7 @@ fn _dot_2d_mod(a: &Array2<Float>, b: &Array2<Float>) -> Array2<Float> {
 /// Returns:
 ///    Distances between each site.
 #[inline]
-pub fn pbc_all_distances(
+pub(crate) fn pbc_all_distances(
     lattice: &Array2<Float>,
     frac_coords: &Array2<Float>,
 ) -> Result<Array2<Float>, LinalgError> {
@@ -152,7 +152,10 @@ fn _gram_schmidt_process(basis: &Array2<Float>) -> Array2<Float> {
 ///   - `basis`: A generating matrix for the lattice
 ///
 #[inline]
-pub fn lll_reduce(basis: &Array2<Float>, delta: Option<Float>) -> (Array2<Float>, Array2<Float>) {
+pub(crate) fn lll_reduce(
+    basis: &Array2<Float>,
+    delta: Option<Float>,
+) -> (Array2<Float>, Array2<Float>) {
     // Parameter delta in the Lovasz condition
     let delta = delta.unwrap_or(0.75);
     let mut basis = basis.clone();

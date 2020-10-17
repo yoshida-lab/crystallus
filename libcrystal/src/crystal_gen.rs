@@ -12,9 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod utils;
+mod crystal;
+mod options;
 
-use self::utils::{lll_reduce as _lll, pbc_all_distances as _pbc};
+use rand::distributions::{Bernoulli, Distribution};
+
+pub use self::crystal::Crystal;
+pub use self::options::CrystalGeneratorOption;
+use crate::utils::pbc_all_distances;
 use crate::{wyckoff_pos::*, Float, SPG_TYPES, WY};
 use error::Error;
 use ndarray::{arr2, concatenate, Array2, ArrayView2, Axis};
@@ -27,33 +32,6 @@ use std::{error, fmt};
 const COVALENT_RADIUS: &'static str = std::include_str!("covalent_radius.json");
 lazy_static! {
     static ref RADIUS: HashMap<String, Float> = serde_json::from_str(COVALENT_RADIUS).unwrap();
-}
-
-#[inline]
-pub fn lll_reduce(basis: &Vec<[Float; 3]>, delta: Float) -> (Vec<Float>, Vec<Float>) {
-    let basis = arr2(basis);
-    let (basis, mapping) = _lll(&basis, Some(delta));
-    (basis.into_raw_vec(), mapping.into_raw_vec())
-}
-
-#[inline]
-pub fn pbc_all_distances(
-    lattice: &Vec<[Float; 3]>,
-    frac_coords: &Vec<[Float; 3]>,
-) -> Result<Vec<Float>, Box<dyn Error>> {
-    let (lattice, frac_coords) = (arr2(lattice), arr2(frac_coords));
-    let distances = _pbc(&lattice, &frac_coords)?;
-    Ok(distances.into_raw_vec())
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Crystal {
-    pub spacegroup_num: usize,
-    pub volume: Float,
-    pub lattice: Array2<Float>,
-    pub particles: Array2<Float>,
-    pub elements: Vec<String>,
-    pub wyckoff_letters: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -77,6 +55,7 @@ pub struct CrystalGenerator {
     pub verbose: bool,
     empirical_coords: HashMap<String, Vec<Vec<Float>>>,
     empirical_coords_variance: Float,
+    empirical_coords_sampling_rate: Float,
     wy_pos_generator: HashMap<String, (usize, WyckoffPos)>,
     lattice_gen: LatticeFn,
 }
@@ -86,19 +65,14 @@ impl<'a> CrystalGenerator {
         spacegroup_num: usize,
         estimated_volume: Float,
         estimated_variance: Float,
-        angle_range: Option<(Float, Float)>,
-        angle_tolerance: Option<Float>,
-        empirical_coords: Option<Vec<(String, Vec<Float>)>>,
-        empirical_coords_variance: Option<Float>,
-        max_attempts_number: Option<u16>,
-        verbose: Option<bool>,
+        options: CrystalGeneratorOption,
     ) -> Result<CrystalGenerator, CrystalGeneratorError> {
         if !(1..=230).contains(&spacegroup_num) {
             return Err(CrystalGeneratorError(
                 "space group number is illegal".to_owned(),
             ));
         }
-        let verbose = verbose.unwrap_or(false);
+        let verbose = options.verbose;
         let shifts = match &SPG_TYPES[spacegroup_num - 1] {
             'A' => vec![[0., 1. / 2., 1. / 2.]],
             'B' => vec![[1. / 2., 0., 1. / 2.]],
@@ -130,8 +104,8 @@ impl<'a> CrystalGenerator {
         });
 
         // set value for conditional parameters
-        let angle_tolerance = angle_tolerance.unwrap_or(20.);
-        let angle_range = angle_range.unwrap_or((30., 150.));
+        let angle_tolerance = options.angle_tolerance;
+        let angle_range = options.angle_range;
 
         if angle_range.0 * 3. >= 360. {
             return Err(CrystalGeneratorError(
@@ -148,8 +122,9 @@ impl<'a> CrystalGenerator {
         let volume_dist = Normal::new(estimated_volume, estimated_variance).unwrap();
 
         let empirical_coords: HashMap<String, Vec<Vec<Float>>> =
-            if let Some(coords) = empirical_coords {
+            if options.empirical_coords.len() > 0 {
                 let mut ret = HashMap::new();
+                let coords = options.empirical_coords;
                 for (wy, coord) in coords.into_iter() {
                     ret.entry(wy).or_insert(vec![]).push(coord);
                 }
@@ -157,9 +132,10 @@ impl<'a> CrystalGenerator {
             } else {
                 HashMap::new()
             };
-        let empirical_coords_variance = empirical_coords_variance.unwrap_or_else(|| 0.01);
+        let empirical_coords_variance = options.empirical_coords_variance;
+        let empirical_coords_sampling_rate = options.empirical_coords_sampling_rate;
 
-        let max_attempts_number = max_attempts_number.unwrap_or(5_000);
+        let max_attempts_number = options.max_attempts_number;
 
         // generate `lattice generation` function
         // note that closure in Rust is not a available type
@@ -343,6 +319,7 @@ impl<'a> CrystalGenerator {
             wy_pos_generator,
             empirical_coords,
             empirical_coords_variance,
+            empirical_coords_sampling_rate,
             verbose,
             lattice_gen,
             max_attempts_number,
@@ -423,34 +400,39 @@ impl<'a> CrystalGenerator {
         // generate particles for each element, respectively
         let mut all_particles: Vec<Array2<Float>> = Vec::new();
         let mut empirical_coords = self.empirical_coords.clone();
+        let mut rng = thread_rng();
+
+        let dist = Bernoulli::new(self.empirical_coords_sampling_rate)
+            .map_err(|e| CrystalGeneratorError(format!("{}", e)))?;
+
         for (g, w) in wy_gens_.iter() {
             // if wyckoff position is fixed
             // just use the cached values
             if g.is_cached() {
                 all_particles.push(g.random_gen());
             } else {
-                // try to get empirical coordination
-                let particles: Array2<Float> = if let Some(template) = empirical_coords.get_mut(*w)
-                {
-                    // TODO: can be optimized?
-                    if template.len() > 0 {
-                        let mut rng = thread_rng();
-                        // sampling a template
-                        let n: usize = rng.gen_range(0, template.len());
-                        let tmp = template.remove(n); // remove used coord template
-                        let (x, y, z) = (tmp[0], tmp[1], tmp[2]);
-                        let dist = Normal::new(0., self.empirical_coords_variance).unwrap();
-                        // sampling a perturbation
-                        let perturbation: Vec<Float> = rng.sample_iter(dist).take(3).collect();
-                        let (p1, p2, p3) = (perturbation[0], perturbation[1], perturbation[2]);
-                        // gen with coord + perturbation
-                        g.gen(x + p1, y + p2, z + p3)
-                    } else {
-                        g.random_gen()
+                // try to get empirical coordinate
+                let particles: Array2<Float> = match empirical_coords.get_mut(*w) {
+                    Some(template) => {
+                        // TODO: can be optimized?
+                        if template.len() > 0 || !dist.sample(&mut rng) {
+                            // only sampling when template exists and need sampling
+                            let n: usize = rng.gen_range(0, template.len());
+                            let tmp = template.remove(n); // remove used coord template
+                            let (x, y, z) = (tmp[0], tmp[1], tmp[2]);
+                            let dist = Normal::new(0., self.empirical_coords_variance).unwrap();
+                            // sampling a perturbation
+                            let perturbation: Vec<Float> = rng.sample_iter(dist).take(3).collect();
+                            let (p1, p2, p3) = (perturbation[0], perturbation[1], perturbation[2]);
+                            // gen with coord + perturbation
+                            g.gen(x + p1, y + p2, z + p3)
+                        } else {
+                            g.random_gen()
+                        }
                     }
-                } else {
-                    g.random_gen()
+                    None => g.random_gen(),
                 };
+
                 all_particles.push(particles)
             }
         }
@@ -540,7 +522,7 @@ impl<'a> CrystalGenerator {
         wyckoff_letters: &Vec<String>,
         distance_scale_factor: &Float,
     ) -> bool {
-        match _pbc(lattice, particles) {
+        match pbc_all_distances(lattice, particles) {
             Ok(distance_matrix) => {
                 let ii = distance_matrix.shape()[0];
                 let radius = CrystalGenerator::get_covalent_radius(elements);
@@ -598,15 +580,12 @@ mod tests {
         expected = "called `Result::unwrap()` on an `Err` value: CrystalGeneratorError(\"space group number is illegal\")"
     )]
     fn should_panic_when_using_wrong_spacegroup_number() {
-        CrystalGenerator::from_spacegroup_num(300, 100., 10., None, None, None, None, None, None)
-            .unwrap();
+        CrystalGenerator::from_spacegroup_num(300, 100., 10., Default::default()).unwrap();
     }
 
     #[test]
     fn should_return_space_group_illegal_err() {
-        let tmp = CrystalGenerator::from_spacegroup_num(
-            300, 100., 10., None, None, None, None, None, None,
-        );
+        let tmp = CrystalGenerator::from_spacegroup_num(300, 100., 10., Default::default());
         match tmp {
             Err(e) => assert_eq!(
                 format!("{}", e),
@@ -622,12 +601,10 @@ mod tests {
             1,
             100.,
             10.,
-            Some((160., 170.)),
-            None,
-            None,
-            None,
-            None,
-            None,
+            CrystalGeneratorOption {
+                angle_range: (160., 170.),
+                ..Default::default()
+            },
         );
         match tmp {
             Err(e) => assert_eq!(
@@ -644,12 +621,10 @@ mod tests {
             2,
             1000.,
             10.,
-            Some((119.999, 200.)),
-            None,
-            None,
-            None,
-            None,
-            None,
+            CrystalGeneratorOption {
+                angle_range: (119.999, 200.),
+                ..Default::default()
+            },
         )
         .unwrap();
         (tmp.lattice_gen)().unwrap();
@@ -661,12 +636,10 @@ mod tests {
             2,
             1000.,
             0.,
-            Some((70., 71.)),
-            None,
-            None,
-            None,
-            None,
-            None,
+            CrystalGeneratorOption {
+                angle_range: (70., 71.),
+                ..Default::default()
+            },
         )
         .unwrap();
         let (abc, angles, vol) = (tmp.lattice_gen)()?;
@@ -683,10 +656,8 @@ mod tests {
 
     #[test]
     fn crystal_generator_gen_lattice() -> Result<(), CrystalGeneratorError> {
-        let tmp = CrystalGenerator::from_spacegroup_num(
-            200, 1000., 10., None, None, None, None, None, None,
-        )
-        .unwrap();
+        let tmp =
+            CrystalGenerator::from_spacegroup_num(200, 1000., 10., Default::default()).unwrap();
         let (abc, angles, _vol) = (tmp.lattice_gen)()?;
         assert!(abc.len() == 3);
         assert!(abc.iter().eq(abc.iter()), "{}", true);
@@ -699,18 +670,9 @@ mod tests {
 
     #[test]
     fn check_distance() {
-        let tmp = CrystalGenerator::from_spacegroup_num(
-            12,
-            145.75949096679688,
-            20.,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        )
-        .unwrap();
+        let tmp =
+            CrystalGenerator::from_spacegroup_num(12, 145.75949096679688, 20., Default::default())
+                .unwrap();
         let lattice = arr2(&[
             [14.019043922424316, 0.0, -6.127918936726928e-07],
             [
@@ -774,9 +736,7 @@ mod tests {
              4       |         a      | (0,0,0) (0,0,1/2)
         ------------------------------------------------------
         */
-        let cg = CrystalGenerator::from_spacegroup_num(
-            63, 1000., 10., None, None, None, None, None, None,
-        )?;
+        let cg = CrystalGenerator::from_spacegroup_num(63, 1000., 10., Default::default())?;
         let cry = cg.gen(
             &vec!["Li".to_owned(), "P".to_owned()],
             &vec!["a".to_owned(), "b".to_owned()],
@@ -841,12 +801,11 @@ mod tests {
             167,
             1000.,
             10.,
-            None,
-            None,
-            Some(template),
-            Some(0.),
-            None,
-            None,
+            CrystalGeneratorOption {
+                empirical_coords: template,
+                empirical_coords_variance: 0.,
+                ..Default::default()
+            },
         )?;
         let cry = cg.gen(
             &vec!["Li".to_owned(), "P".to_owned()],
@@ -898,12 +857,11 @@ mod tests {
             167,
             1000.,
             10.,
-            None,
-            None,
-            Some(template),
-            Some(0.001),
-            None,
-            None,
+            CrystalGeneratorOption {
+                empirical_coords: template,
+                empirical_coords_variance: 0.001,
+                ..Default::default()
+            },
         )?;
         let cry = cg.gen(
             &vec!["Li".to_owned(), "P".to_owned()],

@@ -125,7 +125,7 @@ def get_equivalent_coords(structure: Structure):
         row = {'element': site.species_string}
         row['multiplicity'] = int(wy_symbol[:-1])
         row['wyckoff_letter'] = wy_symbol[-1]
-        row['coordination'] = [j for j in site.frac_coords]
+        row['coordinate'] = [j for j in site.frac_coords]
 
         return row
 

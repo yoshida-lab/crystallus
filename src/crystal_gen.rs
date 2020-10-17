@@ -18,7 +18,9 @@ use pyo3::types::{PyDict, PyTuple};
 use rayon::prelude::*;
 use std::collections::BTreeMap;
 
-use libcrystal::{Crystal as crystal_, CrystalGenerator as crystal_gen, Float};
+use libcrystal::{
+    Crystal as crystal_, CrystalGenerator as crystal_gen, CrystalGeneratorOption, Float,
+};
 
 #[pyclass(module = "crystallus")]
 #[text_signature = "(spacegroup_num, estimated_volume, estimated_variance, *, min_distance_tolerance, angle_range, angle_tolerance, max_recurrent, n_jobs)"]
@@ -37,6 +39,7 @@ impl CrystalGenerator {
         max_attempts_number = "5_000",
         empirical_coords = "None",
         empirical_coords_variance = "0.01",
+        empirical_coords_sampling_rate = "1.",
         n_jobs = "-1",
         verbose = true
     )]
@@ -48,28 +51,30 @@ impl CrystalGenerator {
         angle_tolerance: Float,
         empirical_coords: Option<&PyTuple>,
         empirical_coords_variance: Float,
+        empirical_coords_sampling_rate: Float,
         max_attempts_number: u16,
         n_jobs: i16,
         verbose: bool,
     ) -> PyResult<Self> {
         // convert Option<T: FromPyObject> -> Option<D>
         // if T.extract() return Err(e), pass this panic to python side
-        let empirical_coords = if let Some(t) = empirical_coords {
-            let t: Vec<(String, Vec<Float>)> = t.extract()?;
-            Some(t)
-        } else {
-            None
+        let empirical_coords: Vec<(String, Vec<Float>)> = match empirical_coords {
+            Some(t) => t.extract()?,
+            _ => Vec::new(),
         };
         let _crystal_gen = crystal_gen::from_spacegroup_num(
             spacegroup_num,
             estimated_volume,
             estimated_variance,
-            Some(angle_range),
-            Some(angle_tolerance),
-            empirical_coords,
-            Some(empirical_coords_variance),
-            Some(max_attempts_number),
-            Some(verbose),
+            CrystalGeneratorOption {
+                angle_range,
+                angle_tolerance,
+                empirical_coords,
+                empirical_coords_variance,
+                empirical_coords_sampling_rate,
+                max_attempts_number,
+                verbose,
+            },
         );
         match _crystal_gen {
             Err(e) => Err(PyValueError::new_err(e.to_string())),

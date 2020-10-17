@@ -17,6 +17,8 @@ extern crate lazy_static;
 extern crate blas_src;
 
 mod crystal_gen;
+mod utils;
+pub mod wrap;
 mod wyckoff_cfg;
 mod wyckoff_pos;
 
