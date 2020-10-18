@@ -28,9 +28,10 @@ class CrystalGenerator(object):
                  *,
                  angle_range: Tuple[float, float] = (30., 150.),
                  angle_tolerance: float = 20.,
-                 empirical_coords: Union[Tuple[str, List[float]], None] = None,
+                 empirical_coords: Union[List[Tuple[str, List[float]]], None] = None,
                  empirical_coords_variance: float = 0.01,
                  empirical_coords_sampling_rate: float = 1.,
+                 empirical_coords_loose_sampling: bool = True,
                  max_attempts_number: int = 5_000,
                  n_jobs: int = -1,
                  verbose: bool = False):
@@ -52,10 +53,14 @@ class CrystalGenerator(object):
         angle_tolerance : float, optional
             The Tolerance of minimum of the degree of angles when lattice generation, by default 20.
         empirical_coords:
-            Empirical distributuion of atomic coordinates. The coordinates should be give as Wyckoff position
+            Empirical distributuion of atomic coordinates. The coordinates should be given in Wyckoff position
             format. For example: for Wyckoff letter `c` in space group 167, the corresponding positions are
-            `(0,0,z) (0,0,-z+1/2) (0,0,-z) (0,0,z+1/2)`. So for a real fraction coordinate such as
-            `[[0,0,0.3] [0,0,0.2] [0,0,0.7] [0,0,0.8]]`, the empirical coords should be given as `('c', [0, 0, 0.3])`.
+            `(0,0,z) (0,0,-z+1/2) (0,0,-z) (0,0,z+1/2)`. So a fraction coordinate in lattice such as
+            `[[0,0,0.3] [0,0,0.2] [0,0,0.7] [0,0,0.8]]` should be converted to `([0, 0, 0.3])`.
+            The key of each coordinates pool has two mode, the one is using Wyckoff position letter, for example
+            `[('a', [0, 0, 0.3]), ('b': [...])]`, the other is by element and Wyckoff position letter,
+            for example `[('Ca:a': [0, 0, 0.3]), ('Ca:b': [...])], ('C:a': [...])]`. You can use parameter
+            `empirical_coords_loose_sampling` to switch modes.
         empirical_coords_variance:
             The variance of empirical_coords. This parameter will be used to build a Gaussian distribution.
             The generator will sample values from the distribution as the perturbation of empirical coordinates.
@@ -64,6 +69,9 @@ class CrystalGenerator(object):
             A higher rate means instead of random generation,
             sampling from empirical coordinate distribution as more as possible when generating.
             Must be in 0 ~ 1, default 1.
+        empirical_coords_loose_sampling:
+            Specify the sampling mode. `True` for using Wyckoff position letter, `False` means using
+            element and Wyckoff position letter. See parameter `empirical_coords` for details.
         max_attempts_number : int, optional
             Max recurrent until generate a reasonable lattice, by default is 5_000
         n_jobs : int, optional
@@ -83,6 +91,7 @@ class CrystalGenerator(object):
         self._empirical_coords = empirical_coords
         self._empirical_coords_variance = empirical_coords_variance
         self._empirical_coords_sampling_rate = empirical_coords_sampling_rate
+        self._empirical_coords_loose_sampling = empirical_coords_loose_sampling
         self._spacegroup_num = spacegroup_num
 
         self._cg = _CG(spacegroup_num=spacegroup_num,
@@ -93,6 +102,7 @@ class CrystalGenerator(object):
                        empirical_coords=empirical_coords,
                        empirical_coords_variance=empirical_coords_variance,
                        empirical_coords_sampling_rate=empirical_coords_sampling_rate,
+                       empirical_coords_loose_sampling=empirical_coords_loose_sampling,
                        max_attempts_number=max_attempts_number,
                        n_jobs=n_jobs,
                        verbose=verbose)
@@ -128,6 +138,10 @@ class CrystalGenerator(object):
     @property
     def empirical_coords_sampling_rate(self):
         return self._empirical_coords_sampling_rate
+
+    @property
+    def empirical_coords_loose_sampling(self):
+        return self._empirical_coords_loose_sampling
 
     @property
     def spacegroup_num(self):
@@ -300,6 +314,7 @@ class CrystalGenerator(object):
             \n    empirical_coords={'...' if self._empirical_coords is not None else None},\
             \n    empirical_coords_variance={self.empirical_coords_variance},\
             \n    empirical_coords_sampling_rate={self.empirical_coords_sampling_rate},\
+            \n    empirical_coords_loose_sampling={self.empirical_coords_loose_sampling},\
             \n    verbose={self.verbose}\
             \n    n_jobs={self.n_jobs}\
             \n)"

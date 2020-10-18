@@ -40,6 +40,7 @@ impl CrystalGenerator {
         empirical_coords = "None",
         empirical_coords_variance = "0.01",
         empirical_coords_sampling_rate = "1.",
+        empirical_coords_loose_sampling = true,
         n_jobs = "-1",
         verbose = true
     )]
@@ -52,6 +53,7 @@ impl CrystalGenerator {
         empirical_coords: Option<&PyTuple>,
         empirical_coords_variance: Float,
         empirical_coords_sampling_rate: Float,
+        empirical_coords_loose_sampling: bool,
         max_attempts_number: u16,
         n_jobs: i16,
         verbose: bool,
@@ -71,6 +73,7 @@ impl CrystalGenerator {
                 angle_tolerance,
                 empirical_coords,
                 empirical_coords_variance,
+                empirical_coords_loose_sampling,
                 empirical_coords_sampling_rate,
                 max_attempts_number,
                 verbose,

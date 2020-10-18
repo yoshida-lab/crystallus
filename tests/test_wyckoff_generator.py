@@ -31,7 +31,7 @@ def test_wyckoff_gen_without_priority():
         'O': ['d']
     }, {
         'Ca': ['a'],
-        'b': ['b'],
+        'C': ['b'],
         'O': ['e']
     }, {
         'Ca': ['a'],

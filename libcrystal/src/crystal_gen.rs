@@ -56,6 +56,7 @@ pub struct CrystalGenerator {
     empirical_coords: HashMap<String, Vec<Vec<Float>>>,
     empirical_coords_variance: Float,
     empirical_coords_sampling_rate: Float,
+    empirical_coords_loose_sampling: bool,
     wy_pos_generator: HashMap<String, (usize, WyckoffPos)>,
     lattice_gen: LatticeFn,
 }
@@ -134,6 +135,7 @@ impl<'a> CrystalGenerator {
             };
         let empirical_coords_variance = options.empirical_coords_variance;
         let empirical_coords_sampling_rate = options.empirical_coords_sampling_rate;
+        let empirical_coords_loose_sampling = options.empirical_coords_loose_sampling;
 
         let max_attempts_number = options.max_attempts_number;
 
@@ -320,6 +322,7 @@ impl<'a> CrystalGenerator {
             empirical_coords,
             empirical_coords_variance,
             empirical_coords_sampling_rate,
+            empirical_coords_loose_sampling,
             verbose,
             lattice_gen,
             max_attempts_number,
@@ -380,7 +383,7 @@ impl<'a> CrystalGenerator {
         let mut elements_: Vec<String> = Vec::new();
         let mut wyckoff_letters_: Vec<String> = Vec::new();
         let mut coord_pool: HashMap<String, Vec<(Float, Float, Float)>> = HashMap::new();
-        let mut wy_gens_: Vec<(&WyckoffPos, &String)> = Vec::new(); //  [(wyckoff_pos_gen, wyckoff_letter)...]
+        let mut wy_gens_: Vec<(&WyckoffPos, String)> = Vec::new(); //  [(wyckoff_pos_gen, wyckoff_letter)...]
 
         // init random generator
         let mut rng = thread_rng();
@@ -394,12 +397,21 @@ impl<'a> CrystalGenerator {
                 Some((multiplicity, wy_gen)) => {
                     elements_.append(&mut vec![e.to_string(); *multiplicity]);
                     wyckoff_letters_.append(&mut vec![w.to_string(); *multiplicity]);
-                    wy_gens_.push((wy_gen, w));
+
+                    // determining sampling key
+                    // loose: by wyckoff letter -> 'a'
+                    // not loose: by element+wyckoff: -> 'Ca:a'
+                    let key = if self.empirical_coords_loose_sampling {
+                        (*w).clone()
+                    } else {
+                        [(*e).clone(), (*w).clone()].join(":")
+                    };
+                    wy_gens_.push((wy_gen, key.clone()));
 
                     // TODO: can be optimized?
                     if !wy_gen.is_cached() {
-                        // try to get empirical coordinate
-                        let coord: (Float, Float, Float) = match empirical_coords.get_mut(w) {
+                        // sampling from empirical coordinates
+                        let coord: (Float, Float, Float) = match empirical_coords.get_mut(&key) {
                             Some(coords) => {
                                 // only sampling when coords exists and need sampling
                                 if coords.len() > 0 && bernoulli.sample(&mut rng) {
@@ -421,10 +433,7 @@ impl<'a> CrystalGenerator {
                             }
                             None => rng.gen(),
                         };
-                        coord_pool
-                            .entry(w.to_string())
-                            .or_insert(vec![])
-                            .push(coord);
+                        coord_pool.entry(key).or_insert(vec![]).push(coord);
                     }
                 }
                 None => {
@@ -441,15 +450,16 @@ impl<'a> CrystalGenerator {
 
         // generate particles for each element, respectively
         let mut all_particles: Vec<Array2<Float>> = Vec::new();
-        for (g, w) in wy_gens_.iter() {
+        for (g, key) in wy_gens_.iter() {
             // if wyckoff position is fixed
             // just use the cached values
+
             if g.is_cached() {
                 all_particles.push(g.random_gen());
             } else {
                 // try to get empirical coordinate
                 let coord = coord_pool
-                    .get_mut(*w)
+                    .get_mut(key)
                     .ok_or_else(|| CrystalGeneratorError("Unexpected no `key` error".to_owned()))?;
                 let n: usize = rng.gen_range(0, coord.len());
                 let (x, y, z) = coord.remove(n);
@@ -792,9 +802,69 @@ mod tests {
         );
         Ok(())
     }
-
     #[test]
-    fn crystal_generate_with_template_without_perturbation() -> Result<(), CrystalGeneratorError> {
+    fn crystal_generate_with_no_matched_template() -> Result<(), CrystalGeneratorError> {
+        /*
+        space group 63
+        ======================================================
+        Multiplicity | Wyckoff letter |      Coordinates
+        ------------------------------------------------------
+             4       |         b      | (0,1/2,0) (0,1/2,1/2)
+        ------------------------------------------------------
+             4       |         a      | (0,0,0) (0,0,1/2)
+        ------------------------------------------------------
+        */
+        let template: Vec<(String, Vec<Float>)> = vec![
+            ("c".to_owned(), vec![0.2, 0., 0.0]),
+            ("d".to_owned(), vec![0.4, 0., 0.0]),
+        ];
+        let cg = CrystalGenerator::from_spacegroup_num(
+            63,
+            1000.,
+            10.,
+            CrystalGeneratorOption {
+                empirical_coords: template,
+                empirical_coords_variance: 0.,
+                ..Default::default()
+            },
+        )?;
+        let cry = cg.gen(
+            &vec!["Li".to_owned(), "P".to_owned()],
+            &vec!["a".to_owned(), "b".to_owned()],
+            None,
+            None,
+        )?;
+        assert_eq!(
+            cry.elements,
+            vec![
+                "Li".to_owned(),
+                "Li".to_owned(),
+                "Li".to_owned(),
+                "Li".to_owned(),
+                "P".to_owned(),
+                "P".to_owned(),
+                "P".to_owned(),
+                "P".to_owned()
+            ]
+        );
+        assert_eq!(cry.particles.shape(), [8, 3]);
+        assert_eq!(
+            cry.particles,
+            arr2(&[
+                [0., 0., 0.],    // Li
+                [0., 0., 0.5],   // Li
+                [0.5, 0.5, 0.],  // Li
+                [0.5, 0.5, 0.5], // Li
+                [0., 0.5, 0.],   // P
+                [0., 0.5, 0.5],  // P
+                [0.5, 1., 0.],   // P
+                [0.5, 1., 0.5]   // P
+            ])
+        );
+        Ok(())
+    }
+    #[test]
+    fn crystal_generate_with_loose_without_perturbation() -> Result<(), CrystalGeneratorError> {
         /*
         space group 167
         =========================================================================
@@ -824,6 +894,62 @@ mod tests {
             CrystalGeneratorOption {
                 empirical_coords: template,
                 empirical_coords_variance: 0.,
+                ..Default::default()
+            },
+        )?;
+        let cry = cg.gen(
+            &vec!["Li".to_owned(), "P".to_owned()],
+            &vec!["c".to_owned(), "e".to_owned()],
+            Some(false),
+            None,
+        )?;
+        assert_eq!(
+            cry.elements,
+            vec![
+                "Li".to_owned(),
+                "Li".to_owned(),
+                "Li".to_owned(),
+                "Li".to_owned(),
+                "P".to_owned(),
+                "P".to_owned(),
+                "P".to_owned(),
+                "P".to_owned(),
+                "P".to_owned(),
+                "P".to_owned()
+            ]
+        );
+        assert_eq!(cry.particles.shape(), [10, 3]);
+        assert_abs_diff_eq!(
+            cry.particles,
+            arr2(&[
+                [0.2, 0.2, 0.2],  // Li
+                [0.3, 0.3, 0.3],  // Li
+                [0.8, 0.8, 0.8],  // Li
+                [0.7, 0.7, 0.7],  // Li
+                [0.4, 0.1, 0.25], // P
+                [0.25, 0.4, 0.1], // P
+                [0.1, 0.25, 0.4], // P
+                [0.6, 0.9, 0.75], // P
+                [0.75, 0.6, 0.9], // P
+                [0.9, 0.75, 0.6]  // P
+            ])
+        );
+        Ok(())
+    }
+    #[test]
+    fn crystal_generate_with_strict_without_perturbation() -> Result<(), CrystalGeneratorError> {
+        let template: Vec<(String, Vec<Float>)> = vec![
+            ("Li:c".to_owned(), vec![0.2, 0., 0.0]),
+            ("P:e".to_owned(), vec![0.4, 0., 0.0]),
+        ];
+        let cg = CrystalGenerator::from_spacegroup_num(
+            167,
+            1000.,
+            10.,
+            CrystalGeneratorOption {
+                empirical_coords: template,
+                empirical_coords_variance: 0.,
+                empirical_coords_loose_sampling: false,
                 ..Default::default()
             },
         )?;

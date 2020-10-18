@@ -14,11 +14,12 @@
 
 import pytest
 import numpy as np
+import numpy.testing as npt
 
 from crystallus import CrystalGenerator
 
 
-def test_gen_one():
+def test_crystal_gen_one():
     cg = CrystalGenerator(207, 1000, 20)
     structure = cg.gen_one(C=('a', 'b'), O=('d'))
 
@@ -40,7 +41,47 @@ def test_gen_one():
                                    [0., 1 / 2, 0.], [0., 0., 1 / 2]]
 
 
-def test_gen_many_1():
+def test_crystal_gen_one_with_template():
+    """
+    space group 167
+    =========================================================================
+    Multiplicity | Wyckoff letter |      Coordinates
+    -------------------------------------------------------------------------
+            6       |         e      | (x,0,1/4) (0,x,1/4) (-x,-x,1/4)
+                    |                | (-x,0,3/4) (0,-x,3/4) (x,x,3/4)
+    -------------------------------------------------------------------------
+            6       |         d      | (1/2,0,0) (0,1/2,0) (1/2,1/2,0)
+                    |                | (0,1/2,1/2) (1/2,0,1/2) (1/2,1/2,1/2)
+    -------------------------------------------------------------------------
+            4       |         c      | (0,0,z) (0,0,-z+1/2) (0,0,-z) (0,0,z+1/2)
+    -------------------------------------------------------------------------
+            2       |         b      | (0,0,0) (0,0,1/2)
+    -------------------------------------------------------------------------
+            2       |         a      | (0,0,1/4) (0,0,3/4)
+    -------------------------------------------------------------------------
+    """
+    template = [('c', [0.2, 0., 0.0]), ('e', [0.4, 0., 0.0])]
+    cg = CrystalGenerator(167, 1000, 10, empirical_coords=template, empirical_coords_variance=0)
+    structure = cg.gen_one(C=('c'), O=('e'))
+
+    assert structure['wyckoff_letters'] == ['c'] * 4 + ['e'] * 6
+    npt.assert_almost_equal(
+        structure['coords'],
+        [
+            [0.2, 0.2, 0.2],  # Li
+            [0.3, 0.3, 0.3],  # Li
+            [0.8, 0.8, 0.8],  # Li
+            [0.7, 0.7, 0.7],  # Li
+            [0.4, 0.1, 0.25],  # P
+            [0.25, 0.4, 0.1],  # P
+            [0.1, 0.25, 0.4],  # P
+            [0.6, 0.9, 0.75],  # P
+            [0.75, 0.6, 0.9],  # P
+            [0.9, 0.75, 0.6],  # P
+        ])
+
+
+def test_crystal_gen_many_1():
     cg = CrystalGenerator(207, 1000, 20)
     structure = cg.gen_many(10)
 
@@ -53,7 +94,7 @@ def test_gen_many_2():
         cg.gen_many(10, {'C': ('a', 'b'), 'O': ('d',)}, max_attempts=2)
 
 
-def test_gen_many_3():
+def test_crystal_gen_many_3():
     cg = CrystalGenerator(207, 1000, 20)
     structure = cg.gen_many(10, {'C': ('a', 'b'), 'O': ('d',)})
 
@@ -64,7 +105,7 @@ def test_gen_many_3():
     assert structure[0]['coords'] == structure[2]['coords']
 
 
-def test_gen_many_4():
+def test_crystal_gen_many_4():
     cg = CrystalGenerator(207, 1000, 20)
     cfgs = (
         {
@@ -85,7 +126,7 @@ def test_gen_many_4():
     assert structure[5]['wyckoff_letters'] == structure[9]['wyckoff_letters']
 
 
-def test_gen_many_5():
+def test_crystal_gen_many_5():
     cg = CrystalGenerator(33, 1168, 15)
     comp = {
         'Ag': ['a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'],

@@ -11,6 +11,7 @@ pub struct CrystalGeneratorOption {
     pub empirical_coords: Vec<(String, Vec<Float>)>,
     pub empirical_coords_variance: Float,
     pub empirical_coords_sampling_rate: Float,
+    pub empirical_coords_loose_sampling: bool,
     pub max_attempts_number: u16,
     pub verbose: bool,
 }
@@ -24,6 +25,7 @@ impl Default for CrystalGeneratorOption {
             empirical_coords_variance: 0.01,
             empirical_coords_sampling_rate: 1.,
             max_attempts_number: 5_000,
+            empirical_coords_loose_sampling: true,
             verbose: false,
         }
     }
