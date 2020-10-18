@@ -1,5 +1,6 @@
 import re
 from copy import deepcopy
+from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -74,15 +75,17 @@ class _Particle():
 
 
 class WyckoffPositionConverter():
+    """Convert fraction coordinates into Wyckoff position formate. """
+
     patten = re.compile(r'(?<=\)),\s*')
 
-    def __init__(self, spacegroup_num):
+    def __init__(self, spacegroup_num: int):
         wys = SpaceGroupDB.get(SpaceGroupDB.spacegroup_num == spacegroup_num).wyckoffs
         self.particle = _Particle()
         self.wyckoff_pos = {wy.letter: self.patten.split(wy.positions)[0][1:-1] for wy in wys}
 
-    def __call__(self, wy_letter, b):
-        b = np.asarray(b)
+    def _inner(self, wy_letter, coord):
+        b = np.asarray(coord)
         a = np.array(self.particle(self.wyckoff_pos[wy_letter]))
         idx = []
 
@@ -100,8 +103,26 @@ class WyckoffPositionConverter():
 
         return b.tolist()
 
+    def __call__(
+        self,
+        *wy_and_coord: Tuple[str, List[float]],
+    ):
+        return [(a, self._inner(a, b)) for _, (a, b) in wy_and_coord]
 
-def build_structure(structure_data):
+
+def build_structure(structure_data: dict):
+    """Build a pymatgen Structure object from the genrated structure data.
+
+    Parameters
+    ----------
+    structure_data
+        A generate structure data.
+
+    Returns
+    -------
+    dict
+        A dictionary contains a structure and other information about the structure.
+    """
     s = deepcopy(structure_data)
     struct = Structure(lattice=s['lattice'], species=s['species'], coords=s['coords'])
     s['structure'] = struct.get_primitive_structure()
@@ -117,12 +138,25 @@ def build_structure(structure_data):
 
 
 def get_equivalent_coords(structure: Structure):
+    """Extract the equivalent coordinates from the given structure.
+
+    Parameters
+    ----------
+    structure
+        A pymatgen structure object.
+
+    Returns
+    -------
+    DataFrame
+        A dataframe contains all equivalent coordinates and their Wyckoff position letters.
+    """
     struct = SpacegroupAnalyzer(structure).get_symmetrized_structure()
 
     def _inner(i, sites):
         site = sites[0]
         wy_symbol = struct.wyckoff_symbols[i]
         row = {'element': site.species_string}
+        row['spacegroup_num'] = struct.get_space_group_info()[1]
         row['multiplicity'] = int(wy_symbol[:-1])
         row['wyckoff_letter'] = wy_symbol[-1]
         row['coordinate'] = [j for j in site.frac_coords]
@@ -132,7 +166,29 @@ def get_equivalent_coords(structure: Structure):
     return pd.DataFrame([_inner(i, sites) for i, sites in enumerate(struct.equivalent_sites)])
 
 
-def structure_dissimilarity(anchor_structure, other_structures, *, verbose=1, n_jobs=1):
+def structure_dissimilarity(anchor_structure: Structure,
+                            other_structures: List[Structure],
+                            *,
+                            verbose: int = 1,
+                            n_jobs: int = 1):
+    """Calculate dissimilarity between anchor and other structures.
+
+    Parameters
+    ----------
+    anchor_structure
+        Anchor structure
+    other_structures
+        Structures will be used to calculate the dissimilarity against the anchor structure.
+    verbose
+        Verbose output when performing parallel calculation, by default 1
+    n_jobs
+        Specify the number of cores for parallel calculation, by default 1
+
+    Returns
+    -------
+    list
+        List of dissimilarities.
+    """
     # Calculate structure fingerprints.
     ssf = SiteStatsFingerprint(CrystalNNFingerprint.from_preset('ops',
                                                                 distance_cutoffs=None,

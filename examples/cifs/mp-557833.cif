@@ -1,0 +1,44 @@
+# generated using pymatgen
+data_Ti(Ag4S3)2
+_symmetry_space_group_name_H-M   Pna2_1
+_cell_length_a   15.34961000
+_cell_length_b   7.57201700
+_cell_length_c   10.73846500
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   90.00000000
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   33
+_chemical_formula_structural   Ti(Ag4S3)2
+_chemical_formula_sum   'Ti4 Ag32 S24'
+_cell_volume   1248.10502523
+_cell_formula_units_Z   4
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, z+1/2'
+  3  '-x+1/2, y+1/2, z+1/2'
+  4  'x+1/2, -y+1/2, z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Ti  Ti0  4  0.12737200  0.75670500  0.51507900  1
+  Ag  Ag1  4  0.01909600  0.49701700  0.75827300  1
+  Ag  Ag2  4  0.05073600  0.27916600  0.52593500  1
+  Ag  Ag3  4  0.08002100  0.93865300  0.84519500  1
+  Ag  Ag4  4  0.08253000  0.89543800  0.19284700  1
+  Ag  Ag5  4  0.12263900  0.27293200  0.99348200  1
+  Ag  Ag6  4  0.22676200  0.62248700  0.18959500  1
+  Ag  Ag7  4  0.22885400  0.49386400  0.79904900  1
+  Ag  Ag8  4  0.23537500  0.95090500  0.01620900  1
+  S  S9  4  0.00647500  0.77809100  0.64050000  1
+  S  S10  4  0.12073800  0.70680200  0.00529400  1
+  S  S11  4  0.12138900  0.23876500  0.75621000  1
+  S  S12  4  0.12216100  0.01391900  0.40379100  1
+  S  S13  4  0.12805900  0.51398300  0.38551400  1
+  S  S14  4  0.24677300  0.76277900  0.64402800  1

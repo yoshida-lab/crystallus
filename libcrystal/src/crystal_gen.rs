@@ -28,7 +28,7 @@ use rand_distr::{Normal, Uniform};
 use std::collections::HashMap;
 use std::{error, fmt};
 
-// Covalent radius for element (Z=1) H to Cm (Z=96)
+// Covalent radius for element H (Z=1) to Cm (Z=96)
 const COVALENT_RADIUS: &'static str = std::include_str!("covalent_radius.json");
 lazy_static! {
     static ref RADIUS: HashMap<String, Float> = serde_json::from_str(COVALENT_RADIUS).unwrap();
@@ -372,18 +372,60 @@ impl<'a> CrystalGenerator {
         check_distance: Option<bool>,
         distance_scale_factor: Option<Float>,
     ) -> Result<Crystal, CrystalGeneratorError> {
-        let checker = check_distance.unwrap_or(true);
+        // set default value for options
+        let check_distance = check_distance.unwrap_or(true);
         let distance_scale_factor = distance_scale_factor.unwrap_or(0.1);
+
+        // prepare containers
         let mut elements_: Vec<String> = Vec::new();
         let mut wyckoff_letters_: Vec<String> = Vec::new();
-        let mut wy_gens_: Vec<(&WyckoffPos, &String)> = Vec::new();
-        // test all wyckoff letters and build elements list
+        let mut coord_pool: HashMap<String, Vec<(Float, Float, Float)>> = HashMap::new();
+        let mut wy_gens_: Vec<(&WyckoffPos, &String)> = Vec::new(); //  [(wyckoff_pos_gen, wyckoff_letter)...]
+
+        // init random generator
+        let mut rng = thread_rng();
+        let mut empirical_coords = self.empirical_coords.clone();
+        let bernoulli = Bernoulli::new(self.empirical_coords_sampling_rate)
+            .map_err(|e| CrystalGeneratorError(format!("{}", e)))?;
+
+        // iter all wyckoff letters and elements
         for (e, w) in elements.iter().zip(wyckoff_letters) {
             match self.wy_pos_generator.get(w) {
                 Some((multiplicity, wy_gen)) => {
                     elements_.append(&mut vec![e.to_string(); *multiplicity]);
                     wyckoff_letters_.append(&mut vec![w.to_string(); *multiplicity]);
                     wy_gens_.push((wy_gen, w));
+
+                    // TODO: can be optimized?
+                    if !wy_gen.is_cached() {
+                        // try to get empirical coordinate
+                        let coord: (Float, Float, Float) = match empirical_coords.get_mut(w) {
+                            Some(coords) => {
+                                // only sampling when coords exists and need sampling
+                                if coords.len() > 0 && bernoulli.sample(&mut rng) {
+                                    let n: usize = rng.gen_range(0, coords.len());
+                                    let tmp = coords.remove(n); // remove used coords template
+                                    let (x, y, z) = (tmp[0], tmp[1], tmp[2]);
+                                    let dist =
+                                        Normal::new(0., self.empirical_coords_variance).unwrap();
+                                    // sampling a perturbation
+                                    let perturbation: Vec<Float> =
+                                        rng.sample_iter(dist).take(3).collect();
+                                    let (p1, p2, p3) =
+                                        (perturbation[0], perturbation[1], perturbation[2]);
+                                    // return coord + perturbation
+                                    (x + p1, y + p2, z + p3)
+                                } else {
+                                    rng.gen()
+                                }
+                            }
+                            None => rng.gen(),
+                        };
+                        coord_pool
+                            .entry(w.to_string())
+                            .or_insert(vec![])
+                            .push(coord);
+                    }
                 }
                 None => {
                     return Err(CrystalGeneratorError(format!(
@@ -399,12 +441,6 @@ impl<'a> CrystalGenerator {
 
         // generate particles for each element, respectively
         let mut all_particles: Vec<Array2<Float>> = Vec::new();
-        let mut empirical_coords = self.empirical_coords.clone();
-        let mut rng = thread_rng();
-
-        let dist = Bernoulli::new(self.empirical_coords_sampling_rate)
-            .map_err(|e| CrystalGeneratorError(format!("{}", e)))?;
-
         for (g, w) in wy_gens_.iter() {
             // if wyckoff position is fixed
             // just use the cached values
@@ -412,28 +448,12 @@ impl<'a> CrystalGenerator {
                 all_particles.push(g.random_gen());
             } else {
                 // try to get empirical coordinate
-                let particles: Array2<Float> = match empirical_coords.get_mut(*w) {
-                    Some(template) => {
-                        // TODO: can be optimized?
-                        if template.len() > 0 || !dist.sample(&mut rng) {
-                            // only sampling when template exists and need sampling
-                            let n: usize = rng.gen_range(0, template.len());
-                            let tmp = template.remove(n); // remove used coord template
-                            let (x, y, z) = (tmp[0], tmp[1], tmp[2]);
-                            let dist = Normal::new(0., self.empirical_coords_variance).unwrap();
-                            // sampling a perturbation
-                            let perturbation: Vec<Float> = rng.sample_iter(dist).take(3).collect();
-                            let (p1, p2, p3) = (perturbation[0], perturbation[1], perturbation[2]);
-                            // gen with coord + perturbation
-                            g.gen(x + p1, y + p2, z + p3)
-                        } else {
-                            g.random_gen()
-                        }
-                    }
-                    None => g.random_gen(),
-                };
-
-                all_particles.push(particles)
+                let coord = coord_pool
+                    .get_mut(*w)
+                    .ok_or_else(|| CrystalGeneratorError("Unexpected no `key` error".to_owned()))?;
+                let n: usize = rng.gen_range(0, coord.len());
+                let (x, y, z) = coord.remove(n);
+                all_particles.push(g.gen(x, y, z));
             }
         }
 
@@ -449,7 +469,7 @@ impl<'a> CrystalGenerator {
 
         // check distances between all particles,
         // if ok, return generated crystal object
-        if !checker {
+        if !check_distance {
             return Ok(Crystal {
                 spacegroup_num: self.spacegroup_num,
                 elements: elements_,

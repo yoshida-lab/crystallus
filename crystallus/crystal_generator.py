@@ -300,5 +300,6 @@ class CrystalGenerator(object):
             \n    empirical_coords={'...' if self._empirical_coords is not None else None},\
             \n    empirical_coords_variance={self.empirical_coords_variance},\
             \n    empirical_coords_sampling_rate={self.empirical_coords_sampling_rate},\
+            \n    verbose={self.verbose}\
             \n    n_jobs={self.n_jobs}\
             \n)"
