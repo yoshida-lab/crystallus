@@ -28,6 +28,9 @@ classifier = [
 maintainer = 'tsumina <liu.chang.1865@gmail.com>'
 requires-dist = [
   'peewee>=3.13.0',
+  'pandas>=1.0.0',
+  'pymatgen>=2020.9.14',
+  'matminer',
 ]
 requires-python = '>=3.6'
 

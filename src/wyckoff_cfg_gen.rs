@@ -26,7 +26,7 @@ use libcrystal::{Float, WyckoffCfgGenerator as wyckoff_cfg_gen};
 #[text_signature = "(max_recurrent, n_jobs, **composition)"]
 pub struct WyckoffCfgGenerator {
     composition: BTreeMap<String, Float>,
-    priority: Option<HashMap<String, Float>>,
+    priority: HashMap<usize, HashMap<String, Float>>,
     max_recurrent: u16,
     _n_jobs: i16,
 }
@@ -47,9 +47,14 @@ impl WyckoffCfgGenerator {
         priority: Option<&PyDict>,
         composition: Option<&PyDict>,
     ) -> PyResult<Self> {
+        // convert Option<T: FromPyObject> -> Option<D>
+        // if T.extract() return Err(e), pass this panic to python side
+        let priority: HashMap<usize, HashMap<String, Float>> = match priority {
+            Some(t) => t.extract()?,
+            _ => HashMap::new(),
+        };
         let composition = composition.clone();
-        let priority: Option<HashMap<String, Float>> =
-            priority.map_or_else(|| None, |s| s.extract().ok());
+
         match composition {
             Some(cfg) => {
                 let composition: BTreeMap<String, Float> = cfg.extract()?;
@@ -82,10 +87,14 @@ impl WyckoffCfgGenerator {
 
     #[text_signature = "($self, spacegroup_num)"]
     fn gen_one(&self, py: Python<'_>, spacegroup_num: usize) -> PyResult<PyObject> {
+        let priority = match self.priority.get(&spacegroup_num) {
+            Some(h) => Some(h.clone()),
+            _ => None,
+        };
         let wy = wyckoff_cfg_gen::from_spacegroup_num(
             spacegroup_num,
             Some(self.max_recurrent),
-            self.priority.clone(),
+            priority,
         );
         match wy {
             Ok(wy) => match wy.gen(&self.composition) {
@@ -118,10 +127,14 @@ impl WyckoffCfgGenerator {
             }
             1 => {
                 let sp_num = spacegroup_num[0];
+                let priority = match self.priority.get(&sp_num) {
+                    Some(h) => Some(h.clone()),
+                    _ => None,
+                };
                 let wy = match wyckoff_cfg_gen::from_spacegroup_num(
                     sp_num,
                     Some(self.max_recurrent),
-                    self.priority.clone(),
+                    priority,
                 ) {
                     Ok(wy) => wy,
                     Err(e) => return Err(PyValueError::new_err(e.to_string())),
@@ -148,10 +161,14 @@ impl WyckoffCfgGenerator {
                 let dict = PyDict::new(py);
                 let mut tmp: Vec<wyckoff_cfg_gen> = Vec::new();
                 for sp_num in spacegroup_num.iter() {
+                    let priority = match self.priority.get(&sp_num) {
+                        Some(h) => Some(h.clone()),
+                        _ => None,
+                    };
                     let wy = match wyckoff_cfg_gen::from_spacegroup_num(
                         *sp_num,
                         Some(self.max_recurrent),
-                        self.priority.clone(),
+                        priority,
                     ) {
                         Ok(wy) => wy,
                         Err(e) => return Err(PyValueError::new_err(e.to_string())),
