@@ -1,6 +1,6 @@
 import re
 from copy import deepcopy
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Union
 
 import numpy as np
 import pandas as pd
@@ -105,9 +105,15 @@ class WyckoffPositionConverter():
 
     def __call__(
         self,
-        *wy_and_coord: Tuple[str, List[float]],
+        *wy_and_coord: Union[Tuple[str, List[float]], Tuple[str, str, List[float]]],
     ):
-        return [(a, self._inner(a, b)) for _, (a, b) in wy_and_coord]
+        if len(wy_and_coord[0]) == 2:
+            return [(wy, self._inner(wy, b)) for _, (wy, b) in wy_and_coord]
+        if len(wy_and_coord[0]) == 3:
+            return [(f'{elem}:{wy}', self._inner(wy, b)) for _, (elem, wy, b) in wy_and_coord]
+        raise ValueError(
+            '`wy_and_coord` must be a list of (wyckoff_letter, coord) or (element, wyckoff_letter, coord)'
+        )
 
 
 def build_structure(structure_data: dict):
@@ -137,13 +143,18 @@ def build_structure(structure_data: dict):
     return s
 
 
-def get_equivalent_coords(structure: Structure):
+def get_equivalent_coords(structure: Structure, **composition: Dict[str, int]):
     """Extract the equivalent coordinates from the given structure.
 
     Parameters
     ----------
     structure
         A pymatgen structure object.
+    composition
+        The target composition. optional.
+        If this parameter is given, will maping element to the corresponding one in
+        the target position. For example, for target `CaCO2`, `Mg` in `MgCO2` is
+        correspond to `Ca`.
 
     Returns
     -------
@@ -151,11 +162,17 @@ def get_equivalent_coords(structure: Structure):
         A dataframe contains all equivalent coordinates and their Wyckoff position letters.
     """
     struct = SpacegroupAnalyzer(structure).get_symmetrized_structure()
+    if composition is not None:
+        comp = structure.get_primitive_structure().composition.as_dict()
+        comp = {int(v): k for k, v in comp.items()}
+        comp_target = {comp[int(v)]: k for k, v in composition.items()}
 
     def _inner(i, sites):
         site = sites[0]
         wy_symbol = struct.wyckoff_symbols[i]
         row = {'element': site.species_string}
+        if composition is not None:
+            row['target_element'] = comp_target[site.species_string]
         row['spacegroup_num'] = struct.get_space_group_info()[1]
         row['multiplicity'] = int(wy_symbol[:-1])
         row['wyckoff_letter'] = wy_symbol[-1]
