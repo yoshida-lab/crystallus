@@ -103,14 +103,16 @@ class WyckoffPositionConverter():
 
         return b.tolist()
 
-    def __call__(
-        self,
-        *wy_and_coord: Union[Tuple[str, List[float]], Tuple[str, str, List[float]]],
-    ):
+    def __call__(self,
+                 *wy_and_coord: Union[Tuple[str, List[float]], Tuple[str, str, List[float]]],
+                 data: pd.DataFrame = None):
+        if data is not None:
+            wy_and_coord = [a for _, a in data.iterrows()]
+
         if len(wy_and_coord[0]) == 2:
-            return [(wy, self._inner(wy, b)) for _, (wy, b) in wy_and_coord]
+            return [(wy, self._inner(wy, b)) for wy, b in wy_and_coord]
         if len(wy_and_coord[0]) == 3:
-            return [(f'{elem}:{wy}', self._inner(wy, b)) for _, (elem, wy, b) in wy_and_coord]
+            return [(f'{elem}:{wy}', self._inner(wy, b)) for elem, wy, b in wy_and_coord]
         raise ValueError(
             '`wy_and_coord` must be a list of (wyckoff_letter, coord) or (element, wyckoff_letter, coord)'
         )
@@ -162,16 +164,21 @@ def get_equivalent_coords(structure: Structure, **composition: Dict[str, int]):
         A dataframe contains all equivalent coordinates and their Wyckoff position letters.
     """
     struct = SpacegroupAnalyzer(structure).get_symmetrized_structure()
-    if composition is not None:
+    if len(composition) > 0:
         comp = structure.get_primitive_structure().composition.as_dict()
-        comp = {int(v): k for k, v in comp.items()}
-        comp_target = {comp[int(v)]: k for k, v in composition.items()}
+        comp_ = {int(v): k for k, v in comp.items()}
+        try:
+            comp_target = {comp_[int(v)]: k for k, v in composition.items()}
+        except KeyError as e:
+            raise KeyError(
+                f"structure and target had different composition ratio. target: {composition}, structure: {comp}"
+            )
 
     def _inner(i, sites):
         site = sites[0]
         wy_symbol = struct.wyckoff_symbols[i]
         row = {'element': site.species_string}
-        if composition is not None:
+        if len(composition) > 0:
             row['target_element'] = comp_target[site.species_string]
         row['spacegroup_num'] = struct.get_space_group_info()[1]
         row['multiplicity'] = int(wy_symbol[:-1])
