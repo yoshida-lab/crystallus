@@ -747,7 +747,7 @@ mod tests {
         assert!(angles.len() == 3);
         assert!(angles.iter().eq(angles.iter()), "{}", true);
         assert!(9.5 < abc[0] && abc[0] < 10.5);
-        assert_abs_diff_eq!(angles[0], 90., epsilon = 1e-6);
+        assert_abs_diff_eq!(angles[0], 90., epsilon = 1e-5);
         Ok(())
     }
 
