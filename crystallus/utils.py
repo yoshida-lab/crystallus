@@ -1,6 +1,6 @@
 import re
 from copy import deepcopy
-from typing import List, Tuple, Dict, Union
+from typing import List, Tuple, Union, Callable
 
 import numpy as np
 import pandas as pd
@@ -123,7 +123,7 @@ def build_structure(structure_data: dict):
 
     Parameters
     ----------
-    structure_data
+    structure_data:
         A generate structure data.
 
     Returns
@@ -145,15 +145,15 @@ def build_structure(structure_data: dict):
     return s
 
 
-def get_equivalent_coords(structure: Structure, **composition: Dict[str, int]):
+def get_equivalent_coords(structure: Structure, *, mapper: Callable[[str], str] = None):
     """Extract the equivalent coordinates from the given structure.
 
     Parameters
     ----------
-    structure
+    structure:
         A pymatgen structure object.
-    composition
-        The target composition. optional.
+    mapper:
+        Specify how to replace the elements. optional.
         If this parameter is given, will maping element to the corresponding one in
         the target position. For example, for target `CaCO2`, `Mg` in `MgCO2` is
         correspond to `Ca`.
@@ -164,22 +164,13 @@ def get_equivalent_coords(structure: Structure, **composition: Dict[str, int]):
         A dataframe contains all equivalent coordinates and their Wyckoff position letters.
     """
     struct = SpacegroupAnalyzer(structure).get_symmetrized_structure()
-    if len(composition) > 0:
-        comp = structure.get_primitive_structure().composition.as_dict()
-        comp_ = {int(v): k for k, v in comp.items()}
-        try:
-            comp_target = {comp_[int(v)]: k for k, v in composition.items()}
-        except KeyError as e:
-            raise KeyError(
-                f"structure and target had different composition ratio. target: {composition}, structure: {comp}"
-            )
 
-    def _inner(i, sites):
+    def _inner(i, sites, mapper=None):
         site = sites[0]
         wy_symbol = struct.wyckoff_symbols[i]
         row = {'element': site.species_string}
-        if len(composition) > 0:
-            row['target_element'] = comp_target[site.species_string]
+        if mapper is not None:
+            row['target_element'] = mapper(site.species_string)
         row['spacegroup_num'] = struct.get_space_group_info()[1]
         row['multiplicity'] = int(wy_symbol[:-1])
         row['wyckoff_letter'] = wy_symbol[-1]
@@ -187,7 +178,8 @@ def get_equivalent_coords(structure: Structure, **composition: Dict[str, int]):
 
         return row
 
-    return pd.DataFrame([_inner(i, sites) for i, sites in enumerate(struct.equivalent_sites)])
+    return pd.DataFrame(
+        [_inner(i, sites, mapper=mapper) for i, sites in enumerate(struct.equivalent_sites)])
 
 
 def structure_dissimilarity(anchor_structure: Structure,
@@ -199,13 +191,13 @@ def structure_dissimilarity(anchor_structure: Structure,
 
     Parameters
     ----------
-    anchor_structure
+    anchor_structure:
         Anchor structure
-    other_structures
+    other_structures:
         Structures will be used to calculate the dissimilarity against the anchor structure.
-    verbose
+    verbose:
         Verbose output when performing parallel calculation, by default 1
-    n_jobs
+    n_jobs:
         Specify the number of cores for parallel calculation, by default 1
 
     Returns

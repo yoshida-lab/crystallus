@@ -16,6 +16,7 @@ import pytest
 import numpy as np
 import numpy.testing as npt
 
+from pymatgen import Lattice
 from crystallus import CrystalGenerator
 
 
@@ -39,6 +40,35 @@ def test_crystal_gen_one():
     assert structure['wyckoff_letters'] == ['a', 'b', 'd', 'd', 'd']
     assert structure['coords'] == [[0., 0., 0.], [1 / 2, 1 / 2, 1 / 2], [1 / 2, 0., 0.],
                                    [0., 1 / 2, 0.], [0., 0., 1 / 2]]
+
+
+def test_crystal_gen_one_with_lattice():
+    lattice = Lattice([
+        [1.53132450e+01, 0.00000000e+00, 9.37665824e-16],
+        [-4.66967683e-16, 7.62616100e+00, 4.66967683e-16],
+        [0.00000000e+00, 0.00000000e+00, 1.07431550e+01],
+    ])
+    cg = CrystalGenerator(207, 1000, 0, lattice=lattice.matrix)
+    structure = cg.gen_one(C=('a', 'b'), O=('d'))
+
+    assert set(structure.keys()) == {
+        "lattice",
+        "volume",
+        "spacegroup_num",
+        "species",
+        "wyckoff_letters",
+        "coords",
+    }
+    lattice_new = Lattice(structure['lattice'])
+    abc_new, angles_new = lattice_new.abc, lattice_new.angles
+    abc_old, angles_old = lattice.abc, lattice.angles
+
+    npt.assert_almost_equal(structure['volume'], 1000)
+    npt.assert_almost_equal(abc_new[0] / abc_old[0], abc_new[1] / abc_old[1], decimal=6)
+    npt.assert_almost_equal(angles_new[0], angles_old[0], decimal=5)
+    npt.assert_almost_equal(angles_new[1], angles_old[1], decimal=5)
+    npt.assert_almost_equal(angles_new[2], angles_old[2], decimal=5)
+    npt.assert_almost_equal(angles_new[0], 90., decimal=5)
 
 
 def test_crystal_gen_one_with_template():

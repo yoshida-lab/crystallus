@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 from .crystallus import CrystalGenerator as _CG
 from copy import deepcopy
 from typing import Tuple, Dict, List, Union
@@ -28,6 +29,7 @@ class CrystalGenerator(object):
                  *,
                  angle_range: Tuple[float, float] = (30., 150.),
                  angle_tolerance: float = 20.,
+                 lattice: Union[Tuple[float], None] = None,
                  empirical_coords: Union[List[Tuple[str, List[float]]], None] = None,
                  empirical_coords_variance: float = 0.01,
                  empirical_coords_sampling_rate: float = 1.,
@@ -39,19 +41,23 @@ class CrystalGenerator(object):
 
         Parameters
         ----------
-        spacegroup_num : int
+        spacegroup_num:
             Specify the spacegroup.
-        estimated_volume : float
+        estimated_volume:
             The estimated volume of primitive cell. Unit is Å^3.
-        estimated_variance : float
+        estimated_variance:
             The estimated variance of volume prediction. Unit is Å^3.
             ``estimated_volume`` and ``estimated_variance`` will be used to build
             a Gaussion distribution for the sampling of volume of primitive cell.
             We will use the abstract valuse if sampled volume is negative.
-        angle_range : Tuple[float, float], optional
+        angle_range:
             The range of the degree of angles when lattice generation. by default (30., 150.)
-        angle_tolerance : float, optional
+        angle_tolerance:
             The Tolerance of minimum of the degree of angles when lattice generation, by default 20.
+        lattice:
+            Lattice in symmetric cell. optional.
+            Given this parameter will specify all angles and the aspect ration between lengths of the lattice.
+            The certain lengths will be calculated from volume. Default ``None``.
         empirical_coords:
             Empirical distributuion of atomic coordinates. The coordinates should be given in Wyckoff position
             format. For example: for Wyckoff letter `c` in space group 167, the corresponding positions are
@@ -82,6 +88,12 @@ class CrystalGenerator(object):
         # pyo3 can not convert PyList to PyTuple automatically
         if empirical_coords is not None and not isinstance(empirical_coords, tuple):
             empirical_coords = tuple(empirical_coords)
+        if lattice is not None:
+            lattice = np.asarray(lattice)
+            if lattice.size != 9:
+                raise ValueError('illegal lattice')
+            self._lattice = lattice.reshape(3, 3)
+            lattice = tuple(lattice.flatten().tolist())
 
         self._estimated_volume = estimated_volume
         self._estimated_variance = estimated_variance
@@ -99,6 +111,7 @@ class CrystalGenerator(object):
                        estimated_variance=estimated_variance,
                        angle_range=angle_range,
                        angle_tolerance=angle_tolerance,
+                       lattice=lattice,
                        empirical_coords=empirical_coords,
                        empirical_coords_variance=empirical_coords_variance,
                        empirical_coords_sampling_rate=empirical_coords_sampling_rate,
@@ -130,6 +143,10 @@ class CrystalGenerator(object):
     @property
     def empirical_coords(self):
         return deepcopy(self._empirical_coords)
+
+    @property
+    def lattice(self):
+        return deepcopy(self._lattice)
 
     @property
     def empirical_coords_variance(self):
@@ -311,6 +328,7 @@ class CrystalGenerator(object):
             \n    angle_range={self.angle_range},\
             \n    angle_tolerance={self.angle_tolerance},\
             \n    max_attempts_number={self.max_attempts_number},\
+            \n    lattice={'...' if self._lattice is not None else None},\
             \n    empirical_coords={'...' if self._empirical_coords is not None else None},\
             \n    empirical_coords_variance={self.empirical_coords_variance},\
             \n    empirical_coords_sampling_rate={self.empirical_coords_sampling_rate},\

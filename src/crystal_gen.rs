@@ -37,6 +37,7 @@ impl CrystalGenerator {
         angle_range = "(30., 150.)",
         angle_tolerance = "20.",
         max_attempts_number = "5_000",
+        lattice = "None",
         empirical_coords = "None",
         empirical_coords_variance = "0.01",
         empirical_coords_sampling_rate = "1.",
@@ -50,6 +51,7 @@ impl CrystalGenerator {
         estimated_variance: Float,
         angle_range: (Float, Float),
         angle_tolerance: Float,
+        lattice: Option<&PyTuple>,
         empirical_coords: Option<&PyTuple>,
         empirical_coords_variance: Float,
         empirical_coords_sampling_rate: Float,
@@ -64,6 +66,16 @@ impl CrystalGenerator {
             Some(t) => t.extract()?,
             _ => Vec::new(),
         };
+        let lattice: Vec<Float> = match lattice {
+            Some(t) => {
+                let ret: Vec<Float> = t.extract()?;
+                if ret.len() != 9 {
+                    return Err(PyValueError::new_err("`lattice` is illegal"));
+                }
+                ret
+            }
+            _ => vec![0.; 9],
+        };
         let _crystal_gen = crystal_gen::from_spacegroup_num(
             spacegroup_num,
             estimated_volume,
@@ -71,6 +83,7 @@ impl CrystalGenerator {
             CrystalGeneratorOption {
                 angle_range,
                 angle_tolerance,
+                lattice,
                 empirical_coords,
                 empirical_coords_variance,
                 empirical_coords_loose_sampling,

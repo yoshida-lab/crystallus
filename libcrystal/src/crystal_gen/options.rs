@@ -8,6 +8,7 @@ use crate::Float;
 pub struct CrystalGeneratorOption {
     pub angle_range: (Float, Float),
     pub angle_tolerance: Float,
+    pub lattice: Vec<Float>,
     pub empirical_coords: Vec<(String, Vec<Float>)>,
     pub empirical_coords_variance: Float,
     pub empirical_coords_sampling_rate: Float,
@@ -21,11 +22,12 @@ impl Default for CrystalGeneratorOption {
         Self {
             angle_range: (30., 150.),
             angle_tolerance: 20.,
+            lattice: vec![0.; 9],
             empirical_coords: Vec::new(),
             empirical_coords_variance: 0.01,
             empirical_coords_sampling_rate: 1.,
-            max_attempts_number: 5_000,
             empirical_coords_loose_sampling: true,
+            max_attempts_number: 5_000,
             verbose: false,
         }
     }
