@@ -21,4 +21,4 @@ from .wyckoff_db import Wyckoff as WyckoffDB, SpaceGroup as SpaceGroupDB
 
 __all__ = ["CrystalGenerator", "WyckoffCfgGenerator", "WyckoffDB", "SpaceGroupDB", "pbc_all_distances", "lll_reduce"]
 
-__version__ = "0.3.0.dev"
+__version__ = "0.3.0.rc1"

@@ -1,16 +1,11 @@
 [package]
-<<<<<<<HEAD 
 authors = ['tsumina <liu.chang.1865@gmail.com>']
 edition = '2018'
 homepage = 'https://github.com/yoshida-lab/crystallus'
 license = 'Apache-2'
 name = 'crystallus'
 publish = false
-repository = 'https://github.com/yoshida-lab/crystallus'
-version = '0.3.0'
-
-=======
->>>>>>>8c91cdf... update depens
+version = '0.3.0-rc1'
 [package.metadata.maturin]
 classifier = [
   'Development Status :: 4 - Beta',
