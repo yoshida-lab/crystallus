@@ -104,17 +104,41 @@ class WyckoffPositionConverter():
         return b.tolist()
 
     def __call__(self,
-                 *wy_and_coord: Union[Tuple[str, List[float]], Tuple[str, str, List[float]]],
+                 wyckoff_letters: Union[str, pd.Series, List[str]],
+                 coords: Union[str, pd.Series, List[Tuple[float, float, float]]],
+                 elements: Union[str, pd.Series, List[str], None] = None,
+                 *,
                  data: pd.DataFrame = None):
         if data is not None:
-            wy_and_coord = [a for _, a in data.iterrows()]
+            if not isinstance(wyckoff_letters, str) or not isinstance(coords, str):
+                raise ValueError(
+                    '`wyckoff_letters` and `coords` must be the column name when `data` is set')
+
+            if elements is not None and isinstance(elements, str):
+                wy_and_coord = [a for _, a in data[[wyckoff_letters, coords, elements]].iterrows()]
+            else:
+                wy_and_coord = [a for _, a in data[[wyckoff_letters, coords]].iterrows()]
+        else:
+            if isinstance(wyckoff_letters, str) or isinstance(coords, str) or isinstance(
+                    elements, str):
+                raise ValueError(
+                    'found `wyckoff_letters`, `coords`, and `elements` as column name but `data` is not given'
+                )
+            if not (len(wyckoff_letters) == len(coords) == len(elements)):
+                raise ValueError(
+                    '`wyckoff_letters`, `coords`, and `elements` have different lengths')
+
+            if elements is None:
+                wy_and_coord = [(a, b) for a, b in zip(wyckoff_letters, coords)]
+            else:
+                wy_and_coord = [(a, b, c) for a, b, c in zip(wyckoff_letters, coords, elements)]
 
         if len(wy_and_coord[0]) == 2:
             return [(wy, self._inner(wy, b)) for wy, b in wy_and_coord]
         if len(wy_and_coord[0]) == 3:
-            return [(f'{elem}:{wy}', self._inner(wy, b)) for elem, wy, b in wy_and_coord]
+            return [(f'{elem}:{wy}', self._inner(wy, b)) for wy, b, elem in wy_and_coord]
         raise ValueError(
-            '`wy_and_coord` must be a list of (wyckoff_letter, coord) or (element, wyckoff_letter, coord)'
+            '`wy_and_coord` must be a list of (wyckoff_letter, coord) or (wyckoff_letter, coord, element)'
         )
 
 
