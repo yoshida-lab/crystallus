@@ -124,13 +124,15 @@ class WyckoffPositionConverter():
                 raise ValueError(
                     'found `wyckoff_letters`, `coords`, and `elements` as column name but `data` is not given'
                 )
-            if not (len(wyckoff_letters) == len(coords) == len(elements)):
-                raise ValueError(
-                    '`wyckoff_letters`, `coords`, and `elements` have different lengths')
 
             if elements is None:
+                if not (len(wyckoff_letters) == len(coords)):
+                    raise ValueError('`wyckoff_letters`and `coords` have different lengths')
                 wy_and_coord = [(a, b) for a, b in zip(wyckoff_letters, coords)]
             else:
+                if not (len(wyckoff_letters) == len(coords) == len(elements)):
+                    raise ValueError(
+                        '`wyckoff_letters`, `coords`, and `elements` have different lengths')
                 wy_and_coord = [(a, b, c) for a, b, c in zip(wyckoff_letters, coords, elements)]
 
         if len(wy_and_coord[0]) == 2:
