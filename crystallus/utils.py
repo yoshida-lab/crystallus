@@ -128,12 +128,12 @@ class WyckoffPositionConverter():
             if elements is None:
                 if not (len(wyckoff_letters) == len(coords)):
                     raise ValueError('`wyckoff_letters`and `coords` have different lengths')
-                wy_and_coord = [(a, b) for a, b in zip(wyckoff_letters, coords)]
+                wy_and_coord = list(zip(wyckoff_letters, coords))
             else:
                 if not (len(wyckoff_letters) == len(coords) == len(elements)):
                     raise ValueError(
                         '`wyckoff_letters`, `coords`, and `elements` have different lengths')
-                wy_and_coord = [(a, b, c) for a, b, c in zip(wyckoff_letters, coords, elements)]
+                wy_and_coord = list(zip(wyckoff_letters, coords, elements))
 
         if len(wy_and_coord[0]) == 2:
             return [(wy, self._inner(wy, b)) for wy, b in wy_and_coord]
