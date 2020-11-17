@@ -94,6 +94,8 @@ class CrystalGenerator(object):
                 raise ValueError('illegal lattice')
             self._lattice = lattice.reshape(3, 3)
             lattice = tuple(lattice.flatten().tolist())
+        else:
+            self._lattice = lattice
 
         self._estimated_volume = estimated_volume
         self._estimated_variance = estimated_variance
