@@ -171,7 +171,7 @@ def build_structure(structure_data: dict):
     return s
 
 
-def get_equivalent_coords(structure: Structure, *, mapper: Callable[[str], str] = None):
+def get_equivalent_coords(structure: Structure, *, mapper: Callable[[str, str, int], str] = None):
     """Extract the equivalent coordinates from the given structure.
 
     Parameters
@@ -180,9 +180,9 @@ def get_equivalent_coords(structure: Structure, *, mapper: Callable[[str], str] 
         A pymatgen structure object.
     mapper:
         Specify how to replace the elements. optional.
-        If this parameter is given, will maping element to the corresponding one in
-        the target position. For example, for target `CaCO2`, `Mg` in `MgCO2` is
-        correspond to `Ca`.
+        ``mapper`` has signature ``[element, wyckoff_letter, multiplicity] -> target_element``
+        If this parameter is given, will map the element in the structure to the corresponding one.
+        For example, replace the `Ca` in `CaCO2` with `Mg`.
 
     Returns
     -------
@@ -195,12 +195,13 @@ def get_equivalent_coords(structure: Structure, *, mapper: Callable[[str], str] 
         site = sites[0]
         wy_symbol = struct.wyckoff_symbols[i]
         row = {'element': site.species_string}
-        if mapper is not None:
-            row['target_element'] = mapper(site.species_string)
         row['spacegroup_num'] = struct.get_space_group_info()[1]
         row['multiplicity'] = int(wy_symbol[:-1])
         row['wyckoff_letter'] = wy_symbol[-1]
-        row['coordinate'] = [j for j in site.frac_coords]
+        if mapper is not None:
+            row['target_element'] = mapper(site.species_string, row['wyckoff_letter'],
+                                           row['multiplicity'])
+        row['coordinate'] = list(site.frac_coords)
 
         return row
 
