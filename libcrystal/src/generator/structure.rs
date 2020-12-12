@@ -3,9 +3,29 @@
 // license that can be found in the LICENSE file.
 
 use crate::Float;
+use ndarray::Array2;
 
 #[derive(Clone, Debug)]
-pub struct CrystalGeneratorOption {
+pub struct RandomGeneratorOption {
+    pub angle_range: (Float, Float),
+    pub angle_tolerance: Float,
+    pub max_attempts_number: u16,
+    pub verbose: bool,
+}
+
+impl Default for RandomGeneratorOption {
+    fn default() -> Self {
+        Self {
+            angle_range: (30., 150.),
+            angle_tolerance: 20.,
+            max_attempts_number: 5_000,
+            verbose: false,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct TemplateBaseGeneratorOption {
     pub angle_range: (Float, Float),
     pub angle_tolerance: Float,
     pub lattice: Vec<Float>,
@@ -17,7 +37,7 @@ pub struct CrystalGeneratorOption {
     pub verbose: bool,
 }
 
-impl Default for CrystalGeneratorOption {
+impl Default for TemplateBaseGeneratorOption {
     fn default() -> Self {
         Self {
             angle_range: (30., 150.),
@@ -31,4 +51,13 @@ impl Default for CrystalGeneratorOption {
             verbose: false,
         }
     }
+}
+#[derive(Debug, Clone, PartialEq)]
+pub struct Crystal {
+    pub spacegroup_num: usize,
+    pub volume: Float,
+    pub lattice: Array2<Float>,
+    pub particles: Array2<Float>,
+    pub elements: Vec<String>,
+    pub wyckoff_letters: Vec<String>,
 }

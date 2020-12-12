@@ -465,7 +465,7 @@ impl<'a> CrystalGenerator {
                             Some(coords) => {
                                 // only sampling when coords exists and need sampling
                                 if coords.len() > 0 && bernoulli.sample(&mut rng) {
-                                    let n: usize = thread_rng().gen_range(0, coords.len());
+                                    let n: usize = thread_rng().gen_range(0..coords.len());
                                     let tmp = coords.remove(n); // remove used coords template
                                     let (x, y, z) = (tmp[0], tmp[1], tmp[2]);
                                     let dist =
@@ -511,7 +511,7 @@ impl<'a> CrystalGenerator {
                 let coord = coord_pool
                     .get_mut(key)
                     .ok_or_else(|| CrystalGeneratorError("Unexpected no `key` error".to_owned()))?;
-                let n: usize = thread_rng().gen_range(0, coord.len());
+                let n: usize = thread_rng().gen_range(0..coord.len());
                 let (x, y, z) = coord.remove(n);
                 all_particles.push(g.gen(x, y, z));
             }
