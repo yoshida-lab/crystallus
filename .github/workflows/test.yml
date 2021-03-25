@@ -10,13 +10,13 @@ jobs:
       max-parallel: 6
       matrix:
         # os: ['ubuntu-latest', 'macos-latest']
-        os: ['ubuntu-latest']
+        os: ["ubuntu-latest"]
         python-version: [3.6, 3.7]
 
     steps:
       - uses: actions/checkout@v2
       - name: Install Python ${{ matrix.python-version }}
-        uses: goanpeca/setup-miniconda@v1
+        uses: conda-incubator/setup-miniconda@v2
         with:
           auto-update-conda: true
           auto-activate-base: false
