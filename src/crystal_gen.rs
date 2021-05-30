@@ -1,4 +1,18 @@
-use pyo3::exceptions;
+// Copyright 2021 TsumiNa
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyTuple};
 use rayon::prelude::*;
@@ -44,7 +58,7 @@ impl CrystalGenerator {
             Some(verbose),
         );
         match _crystal_gen {
-            Err(e) => Err(exceptions::ValueError::py_err(e.to_string())),
+            Err(e) => Err(PyValueError::new_err(e.to_string())),
             Ok(w) => {
                 return Ok(CrystalGenerator {
                     _crystal_gen: w,
@@ -111,7 +125,7 @@ impl CrystalGenerator {
                 );
 
                 match cry {
-                    Err(e) => Err(exceptions::ValueError::py_err(e.to_string())),
+                    Err(e) => Err(PyValueError::new_err(e.to_string())),
                     Ok(w) => {
                         let dict = PyDict::new(py);
                         dict.set_item("spacegroup_num", w.spacegroup_num)?;
@@ -138,9 +152,7 @@ impl CrystalGenerator {
                 }
             }
             None => {
-                return Err(exceptions::ValueError::py_err(
-                    "no configurations for generation",
-                ));
+                return Err(PyValueError::new_err("no configurations for generation"));
             }
         }
     }
@@ -164,7 +176,7 @@ impl CrystalGenerator {
         let mut cfgs: Vec<BTreeMap<String, Vec<String>>> =
             match cfgs.extract() {
                 Ok(m) => m,
-                Err(_) => return Err(exceptions::ValueError::py_err(
+                Err(_) => return Err(PyValueError::new_err(
                     "can not converting `cfg` into dict, make sure the `cfgs` are tuple of dicts",
                 )),
             };
@@ -175,7 +187,7 @@ impl CrystalGenerator {
 
         let max_attempts = max_attempts.unwrap_or(expect_size);
         if max_attempts < expect_size {
-            return Err(exceptions::ValueError::py_err(
+            return Err(PyValueError::new_err(
                 "`max_attempts` can not be smaller than `expect_size`",
             ));
         }

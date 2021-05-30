@@ -1,5 +1,19 @@
+// Copyright 2021 TsumiNa
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 use itertools::Itertools;
-use pyo3::exceptions;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyTuple};
 use rayon::prelude::*;
@@ -34,9 +48,7 @@ impl WyckoffCfgGenerator {
                     _n_jobs: n_jobs.unwrap_or(-1),
                 })
             }
-            _ => Err(exceptions::ValueError::py_err(
-                "no configurations for generation",
-            )),
+            _ => Err(PyValueError::new_err("no configurations for generation")),
         }
     }
 
@@ -61,10 +73,10 @@ impl WyckoffCfgGenerator {
         let wy = wyckoff_cfg_gen::from_spacegroup_num(spacegroup_num, Some(self.max_recurrent));
         match wy {
             Ok(wy) => match wy.gen(&self.composition) {
-                Err(e) => Err(exceptions::ValueError::py_err(e.to_string())),
+                Err(e) => Err(PyValueError::new_err(e.to_string())),
                 Ok(w) => Ok(w.into_py(py)),
             },
-            Err(e) => Err(exceptions::ValueError::py_err(e.to_string())),
+            Err(e) => Err(PyValueError::new_err(e.to_string())),
         }
     }
 
@@ -74,7 +86,7 @@ impl WyckoffCfgGenerator {
         let spacegroup_num: Vec<usize> = match spacegroup_num.extract() {
             Ok(m) => m,
             Err(_) => {
-                return Err(exceptions::ValueError::py_err(
+                return Err(PyValueError::new_err(
                     "`spacegroup_num`s must be an int between 1 - 230",
                 ))
             }
@@ -86,16 +98,14 @@ impl WyckoffCfgGenerator {
 
         match spacegroup_num.len() {
             0 => {
-                return Err(exceptions::ValueError::py_err(
-                    "no configurations for generation",
-                ));
+                return Err(PyValueError::new_err("no configurations for generation"));
             }
             1 => {
                 let sp_num = spacegroup_num[0];
                 let wy =
                     match wyckoff_cfg_gen::from_spacegroup_num(sp_num, Some(self.max_recurrent)) {
                         Ok(wy) => wy,
-                        Err(e) => return Err(exceptions::ValueError::py_err(e.to_string())),
+                        Err(e) => return Err(PyValueError::new_err(e.to_string())),
                     };
 
                 //Do works
@@ -124,7 +134,7 @@ impl WyckoffCfgGenerator {
                         Some(self.max_recurrent),
                     ) {
                         Ok(wy) => wy,
-                        Err(e) => return Err(exceptions::ValueError::py_err(e.to_string())),
+                        Err(e) => return Err(PyValueError::new_err(e.to_string())),
                     };
                     tmp.push(wy);
                 }

@@ -1,11 +1,11 @@
 [package]
-name = 'libcrystal'
-version = '0.2.1'
 authors = ['tsumina <liu.chang.1865@gmail.com>']
 edition = '2018'
-workspace = '..'
-license = 'BSD-3'
+license = 'Apache-2'
+name = 'libcrystal'
 repository = 'https://github.com/yoshida-lab/crystallus'
+version = '0.3.0'
+workspace = '..'
 
 [[bench]]
 name = 'wyckoff_gen_one'
@@ -19,38 +19,59 @@ path = 'benches/bench_wyckoff_gen_many.rs'
 name = 'libcrystal'
 
 [dependencies]
-serde_json = '1.0.56'
-rand = '0.7.3'
-rand_distr = '0.2.2'
 lazy_static = '1.4.0'
-regex = '1.3.9'
-ndarray = '0.13.1'
-ndarray-linalg = '0.12.1'
 num-traits = '0.2.12'
+rand = '0.8.3'
+rand_distr = '0.4.0'
+rayon = '1.3.1'
+regex = '1.3.9'
+serde_json = '1.0.56'
+
+[dependencies.blas-src]
+branch = 'master'
+default-features = false
+git = "https://github.com/yoshida-lab/blas-src"
+
+[dependencies.ndarray]
+features = ['rayon', 'blas']
+version = '0.15.2'
+
+[dependencies.ndarray-linalg]
+branch = "master"
+default-features = false
+git = "https://github.com/rust-ndarray/ndarray-linalg"
+# version = '0.13.1'
 
 [dev-dependencies]
-approx = '0.3.2'
-rayon = '1.3.1'
+approx = '0.4.0'
 
 [dev-dependencies.ndarray]
 features = ['approx']
-version = '0.13.1'
+version = '0.15.2'
+
+# dev dependencies
+[dev-dependencies.blas-src]
+branch = 'master'
+default-features = false
+features = ['openblas']
+git = "https://github.com/yoshida-lab/blas-src"
 
 [dev-dependencies.ndarray-linalg]
-features = ['intel-mkl']
-version = '0.12.1'
+branch = "master"
+default-features = false
+features = ['openblas-system']
+git = "https://github.com/rust-ndarray/ndarray-linalg"
 
+# features
 [features]
 # f32 or f64
 f32 = []
 
 # enable blas usage in ndarray
-intel-mkl  = ['ndarray-linalg/intel-mkl']
-netlib  = ['ndarray-linalg/netlib']
-openblas  = ['ndarray-linalg/openblas']
+intel-mkl = ['ndarray-linalg/intel-mkl-system']
+netlib = ['ndarray-linalg/netlib-system']
+openblas = ['ndarray-linalg/openblas-system']
 
-# enable serde support in ndarray
-serde = ['ndarray-linalg/serde-1']
-
-# enable rayon support in ndarray
-rayon_ndarray = ['ndarray/rayon']
+intel-mkl-static = ['ndarray-linalg/intel-mkl-static']
+netlib-static = ['ndarray-linalg/netlib-static']
+openblas-static = ['ndarray-linalg/openblas-static']

@@ -1,28 +1,30 @@
 [package]
-name = 'crystallus'
-version = '0.2.1'
 authors = ['tsumina <liu.chang.1865@gmail.com>']
-homepage = 'https://github.com/yoshida-lab/crystallus'
-repository = 'https://github.com/yoshida-lab/crystallus'
-license = 'BSD-3'
 edition = '2018'
+homepage = 'https://github.com/yoshida-lab/crystallus'
+license = 'Apache-2'
+name = 'crystallus'
 publish = false
+repository = 'https://github.com/yoshida-lab/crystallus'
+version = '0.3.0'
+
 [package.metadata.maturin]
+classifier = [
+  'Development Status :: 4 - Beta',
+  'Intended Audience :: Science/Research',
+  'License :: OSI Approved :: BSD License',
+  'Natural Language :: English',
+  'Operating System :: Microsoft :: Windows',
+  'Operating System :: MacOS',
+  'Operating System :: Unix',
+  'Programming Language :: Python :: 3.6',
+  'Programming Language :: Python :: 3.7',
+  'Programming Language :: Python :: 3.8',
+  'Programming Language :: Python :: 3.9',
+]
 maintainer = 'tsumina <liu.chang.1865@gmail.com>'
 requires-dist = [
-    'peewee>=3.13.0',
-]
-classifier = [
-    'Development Status :: 4 - Beta',
-    'Intended Audience :: Science/Research',
-    'License :: OSI Approved :: BSD License',
-    'Natural Language :: English',
-    'Operating System :: Microsoft :: Windows',
-    'Operating System :: MacOS',
-    'Operating System :: Unix',
-    'Programming Language :: Python :: 3.6',
-    'Programming Language :: Python :: 3.7',
-    'Programming Language :: Python :: 3.8',
+  'peewee>=3.13.0',
 ]
 requires-python = '>=3.6'
 
@@ -30,21 +32,21 @@ requires-python = '>=3.6'
 members = ['libcrystal']
 
 [lib]
-name = 'crystallus'
 crate-type = ['cdylib']
+name = 'crystallus'
 
 [dependencies]
-itertools = '0.9.0'
-rayon = '1.3.1'
+itertools = '0.10.0'
+rayon = '1.5.1'
 
 [dependencies.pyo3]
-version = "0.11.1"
+version = "0.13.2"
 
 [dependencies.libcrystal]
+# features = ["intel-mkl"]
 path = 'libcrystal'
-version = '^0.2.1'
-features = []
+version = '^0.3.0'
 
 [features]
-extension-module = ['pyo3/extension-module']
 default = ['extension-module']
+extension-module = ['pyo3/extension-module']

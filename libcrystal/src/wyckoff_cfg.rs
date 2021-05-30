@@ -1,6 +1,16 @@
-// Copyright 2020 TsumiNa. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Copyright 2021 TsumiNa
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::{Float, SPG_TYPES, WY};
 use rand::{thread_rng, Rng};
@@ -100,7 +110,7 @@ impl WyckoffCfgGenerator {
                     continue;
                 }
                 // randomly select a suitable wyckoff letter
-                let n: usize = thread_rng().gen_range(0, upper);
+                let n: usize = thread_rng().gen_range(0..upper);
                 let (multiplicity, letter, reuse) = &pool[n];
 
                 // record non-reuseable letters

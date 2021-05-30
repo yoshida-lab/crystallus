@@ -1,13 +1,23 @@
-// Copyright 2020 TsumiNa. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Copyright 2021 TsumiNa
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 mod utils;
 
 use self::utils::{lll_reduce as _lll, pbc_all_distances as _pbc};
 use crate::{wyckoff_pos::*, Float, SPG_TYPES, WY};
 use error::Error;
-use ndarray::{arr2, stack, Array2, ArrayView2, Axis};
+use ndarray::{arr2, concatenate, Array2, ArrayView2, Axis};
 use rand::{thread_rng, Rng};
 use rand_distr::{Normal, Uniform};
 use std::collections::HashMap;
@@ -135,11 +145,10 @@ impl<'a> CrystalGenerator {
         let lattice_gen: LatticeFn = match spacegroup_num {
             // Triclinic, α≠β≠γ≠；a≠b≠c
             1..=2 => Box::new(move || {
-                let mut rng = thread_rng();
-                let vol: Float = rng.sample(volume_dist).abs();
+                let vol: Float = thread_rng().sample(volume_dist).abs();
 
                 for _ in 0..max_attempts_number {
-                    let angles: Vec<Float> = rng.sample_iter(angle_dist).take(3).collect();
+                    let angles: Vec<Float> = thread_rng().sample_iter(angle_dist).take(3).collect();
                     // gen angles conditional
                     let sum = angles.iter().sum::<Float>();
                     if angle_tolerance < sum
@@ -150,7 +159,8 @@ impl<'a> CrystalGenerator {
                             .count()
                             == 0
                     {
-                        let mut abc: Vec<Float> = rng.sample_iter(length_dist).take(2).collect();
+                        let mut abc: Vec<Float> =
+                            thread_rng().sample_iter(length_dist).take(2).collect();
                         // c = a*b*c / a*b
                         let c: Float = CrystalGenerator::get_multiplied_length(&vol, &angles)
                             / abc.iter().product::<Float>();
@@ -167,17 +177,17 @@ impl<'a> CrystalGenerator {
             }),
             // Monoclinic, α=γ=90°，β≠90°；a≠b≠c
             3..=15 => Box::new(move || {
-                let mut rng = thread_rng();
-                let vol: Float = rng.sample(volume_dist).abs();
+                let vol: Float = thread_rng().sample(volume_dist).abs();
 
                 // gen angles conditional
                 let mut angles = vec![90 as Float, 0., 90.];
                 for _ in 0..max_attempts_number {
-                    let beta = rng.sample(angle_dist);
+                    let beta = thread_rng().sample(angle_dist);
 
                     if beta != 90. {
                         angles[1] = beta;
-                        let mut abc: Vec<Float> = rng.sample_iter(length_dist).take(2).collect();
+                        let mut abc: Vec<Float> =
+                            thread_rng().sample_iter(length_dist).take(2).collect();
                         // c = a*b*c / a*b
                         let c: Float = CrystalGenerator::get_multiplied_length(&vol, &angles)
                             / abc.iter().product::<Float>();
@@ -194,13 +204,13 @@ impl<'a> CrystalGenerator {
             }),
             // Orthorhombic, α=β=γ=90°；a≠b≠c
             16..=74 => Box::new(move || {
-                let mut rng = thread_rng();
-                let vol: Float = rng.sample(volume_dist).abs();
+                let vol: Float = thread_rng().sample(volume_dist).abs();
 
                 // gen angles conditional
                 let angles = vec![90 as Float; 3];
                 for _ in 0..max_attempts_number {
-                    let mut abc: Vec<Float> = rng.sample_iter(length_dist).take(2).collect();
+                    let mut abc: Vec<Float> =
+                        thread_rng().sample_iter(length_dist).take(2).collect();
                     // c = a*b*c / a*b
                     let c: Float = vol / abc.iter().product::<Float>();
 
@@ -215,13 +225,12 @@ impl<'a> CrystalGenerator {
             }),
             // Tetragonal, α=β=γ=90°；a=b≠c
             75..=142 => Box::new(move || {
-                let mut rng = thread_rng();
-                let vol: Float = rng.sample(volume_dist).abs();
+                let vol: Float = thread_rng().sample(volume_dist).abs();
 
                 // gen angles conditional
                 let angles = vec![90 as Float; 3];
                 for _ in 0..max_attempts_number {
-                    let a = rng.sample(length_dist);
+                    let a = thread_rng().sample(length_dist);
                     let c: Float = vol / (a * a);
 
                     if low_length < c && c < high_length {
@@ -235,14 +244,13 @@ impl<'a> CrystalGenerator {
             }),
             // Trigonal
             n @ 143..=167 => Box::new(move || {
-                let mut rng = thread_rng();
-                let vol: Float = rng.sample(volume_dist).abs();
+                let vol: Float = thread_rng().sample(volume_dist).abs();
                 if ![146, 148, 155, 160, 161, 166, 167].contains(&n) {
                     // α=β=90°，γ=120°；a=b≠c
                     // gen angles conditional
                     let angles = vec![90 as Float, 90., 120.];
                     for _ in 0..max_attempts_number {
-                        let a = rng.sample(length_dist);
+                        let a = thread_rng().sample(length_dist);
                         // c = V / a^2 sinγ
                         let sin_gamma = (120 as Float).to_radians().sin();
                         let c: Float = vol / (a * a * sin_gamma);
@@ -259,7 +267,7 @@ impl<'a> CrystalGenerator {
                     // α=β=γ<90°；a=b=c
                     for _ in 0..max_attempts_number {
                         // gen angles conditional
-                        let angles = vec![rng.sample(Uniform::new(angle_range.0, 90.)); 3];
+                        let angles = vec![thread_rng().sample(Uniform::new(angle_range.0, 90.)); 3];
                         let c: Float =
                             CrystalGenerator::get_multiplied_length(&vol, &angles).powf(1. / 3.);
 
@@ -275,13 +283,12 @@ impl<'a> CrystalGenerator {
             }),
             // Hexagonal, α=β=90°，γ=120°；a=b≠c
             168..=194 => Box::new(move || {
-                let mut rng = thread_rng();
-                let vol: Float = rng.sample(volume_dist).abs();
+                let vol: Float = thread_rng().sample(volume_dist).abs();
 
                 // gen angles conditional
                 let angles = vec![90 as Float, 90., 120.];
                 for _ in 0..max_attempts_number {
-                    let a = rng.sample(length_dist);
+                    let a = thread_rng().sample(length_dist);
                     // c = V / a^2 sinγ
                     let sin_gamma = (120 as Float).to_radians().sin();
                     let c: Float = vol / (a * a * sin_gamma);
@@ -297,8 +304,7 @@ impl<'a> CrystalGenerator {
             }),
             // Cubic, α=β=γ=90°；a=b=c
             195..=230 => Box::new(move || {
-                let mut rng = thread_rng();
-                let vol: Float = rng.sample(volume_dist).abs();
+                let vol: Float = thread_rng().sample(volume_dist).abs();
 
                 // gen angles conditional
                 let angles = vec![90 as Float; 3];
@@ -398,7 +404,7 @@ impl<'a> CrystalGenerator {
         }
 
         // join all generated particles in their generated order
-        let particles = stack(
+        let particles = concatenate(
             Axis(0),
             &all_particles
                 .iter()
@@ -647,9 +653,9 @@ mod tests {
             CrystalGenerator::from_spacegroup_num(200, 1000., 10., None, None, None, None).unwrap();
         let (abc, angles, _vol) = (tmp.lattice_gen)()?;
         assert!(abc.len() == 3);
-        assert!(abc.iter().eq(abc.iter()), true);
+        assert!(abc.iter().eq(abc.iter()), "{}", true);
         assert!(angles.len() == 3);
-        assert!(angles.iter().eq(angles.iter()), true);
+        assert!(angles.iter().eq(angles.iter()), "{}", true);
         assert!(9.5 < abc[0] && abc[0] < 10.5);
         assert!(angles[0] == 90.);
         Ok(())

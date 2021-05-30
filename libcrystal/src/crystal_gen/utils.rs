@@ -1,6 +1,20 @@
+// Copyright 2021 TsumiNa
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 use crate::Float;
 use ndarray::{arr2, Array, Array2};
-use ndarray_linalg::{error::LinalgError, Inverse};
+use ndarray_linalg::{error::LinalgError, InverseInto};
 use std::cmp;
 
 #[inline]
@@ -73,7 +87,7 @@ pub fn pbc_all_distances(
 
     // create images, 2d array of all length 3 combinations of [-1,0,1]
     let (lll_matrix, mapping) = lll_reduce(lattice, None);
-    let lll_inv = mapping.inv()?;
+    let lll_inv = mapping.inv_into()?;
 
     let ii = frac_coords.shape()[0];
     // get inverse coords
@@ -197,7 +211,7 @@ mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
     use ndarray::arr2;
-    use ndarray_linalg::{error::LinalgError, Inverse};
+    use ndarray_linalg::{error::LinalgError, InverseInto};
     #[test]
     fn test_gram_schmidt_process() {
         let ortho =
@@ -238,7 +252,7 @@ mod tests {
         );
         assert_eq!(mapping, arr2(&[[0., 1., 0.], [0., 0., 1.], [1., 0., 0.]]));
 
-        let lll_inv = mapping.inv()?;
+        let lll_inv = mapping.inv_into()?;
         let frac_coords = arr2(&[
             [0.0, 0.6967905759811401, 0.25],
             [0.0, -0.6967905759811401, 0.75],
