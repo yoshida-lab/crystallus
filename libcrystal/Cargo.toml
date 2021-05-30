@@ -1,7 +1,11 @@
 [package]
+<<<<<<<=======
+>>>>>>>8c91cdf... update depens
+HEAD 
 authors = ['tsumina <liu.chang.1865@gmail.com>']
 edition = '2018'
 license = 'Apache-2'
+license = 'BSD-3'
 name = 'libcrystal'
 repository = 'https://github.com/yoshida-lab/crystallus'
 version = '0.3.0'
@@ -28,9 +32,14 @@ regex = '1.3.9'
 serde_json = '1.0.56'
 
 [dependencies.blas-src]
+<<<<<<<=======
+>>>>>>>8c91cdf... update depensHEAD 
 branch = 'master'
 default-features = false
+default-features = false
 git = "https://github.com/yoshida-lab/blas-src"
+version = '0.8'
+
 
 [dependencies.ndarray]
 features = ['rayon', 'blas']
