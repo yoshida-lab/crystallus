@@ -8,3 +8,4 @@ mod template_gen;
 
 pub use random_gen::*;
 pub use structure::*;
+pub use template_gen::*;

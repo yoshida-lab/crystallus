@@ -19,7 +19,7 @@ use rayon::prelude::*;
 use std::collections::BTreeMap;
 
 use libcrystal::{
-    Crystal as crystal_, CrystalGenerator as crystal_gen, CrystalGeneratorOption, Float,
+    Crystal as crystal_, Float, RandomGenerator as crystal_gen, TemplateBaseGeneratorOption,
 };
 
 #[pyclass(module = "crystallus")]
@@ -80,7 +80,7 @@ impl CrystalGenerator {
             spacegroup_num,
             estimated_volume,
             estimated_variance,
-            CrystalGeneratorOption {
+            TemplateBaseGeneratorOption {
                 angle_range,
                 angle_tolerance,
                 lattice,
