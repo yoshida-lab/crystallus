@@ -20,12 +20,12 @@ name = 'libcrystal'
 
 [dependencies]
 lazy_static = '1.4.0'
-num-traits = '0.2.12'
-rand = '0.8.3'
-rand_distr = '0.4.0'
-rayon = '1.3.1'
-regex = '1.3.9'
-serde_json = '1.0.56'
+num-traits = '0.2.14'
+rand = '0.8.4'
+rand_distr = '0.4.2'
+rayon = '1.5.1'
+regex = '1.5.4'
+serde_json = '1.0.75'
 
 [dependencies.blas-src]
 branch = 'master'
@@ -34,7 +34,7 @@ git = "https://github.com/yoshida-lab/blas-src"
 
 [dependencies.ndarray]
 features = ['rayon', 'blas']
-version = '0.15.2'
+version = '0.15.4'
 
 [dependencies.ndarray-linalg]
 branch = "master"
@@ -43,7 +43,7 @@ git = "https://github.com/rust-ndarray/ndarray-linalg"
 # version = '0.13.1'
 
 [dev-dependencies]
-approx = '0.4.0'
+approx = '0.5.0'
 
 [dev-dependencies.ndarray]
 features = ['approx']
