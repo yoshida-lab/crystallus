@@ -23,7 +23,10 @@ mod wyckoff_cfg_gen;
 use crate::crystal_gen::CrystalGenerator;
 use crate::particle_gen::ParticleGenerator;
 use crate::wyckoff_cfg_gen::WyckoffCfgGenerator;
-use libcrystal::{lll_reduce as _lll, pbc_all_distances as _pbc, Float};
+use libcrystal::{
+    wrap::{lll_reduce as _lll, pbc_all_distances as _pbc},
+    Float,
+};
 
 #[pymodule(crystallus)]
 fn crystallus(_py: Python<'_>, m: &PyModule) -> PyResult<()> {

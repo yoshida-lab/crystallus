@@ -148,7 +148,7 @@ impl FromStr for WyckoffPos {
     type Err = ParseWyckoffError<'static>;
 
     #[inline]
-    fn from_str(s: &str) -> std::result::Result<Self, <Self as std::str::FromStr>::Err> {
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         lazy_static! {
             static ref RE: Regex = Regex::new(r"\((?P<p>.+?)\)").unwrap();
         }
@@ -191,6 +191,11 @@ impl WyckoffPos {
     }
 
     #[inline]
+    pub fn is_cached(&self) -> bool {
+        self._cached.is_some()
+    }
+
+    #[inline]
     pub fn gen(&self, x: Float, y: Float, z: Float) -> Array2<Float> {
         match &self._cached {
             None => {
@@ -226,8 +231,13 @@ impl WyckoffPos {
 
     #[inline]
     pub fn random_gen(&self) -> Array2<Float> {
-        let (x, y, z) = thread_rng().gen::<(Float, Float, Float)>();
-        self.gen(x, y, z)
+        match &self._cached {
+            Some(arr) => arr.clone(),
+            _ => {
+                let (x, y, z) = thread_rng().gen::<(Float, Float, Float)>();
+                self.gen(x, y, z)
+            }
+        }
     }
 }
 
@@ -236,11 +246,11 @@ mod tests {
     use super::*;
     use approx::assert_abs_diff_eq;
     #[test]
-    fn test_coordinate_from_err() {
+    fn coordinate_from_err() {
         assert!(Coordinate::from_str("error patten").is_err());
     }
     #[test]
-    fn test_coordinate_from() {
+    fn coordinate_from() {
         assert_eq!(
             Coordinate::from_str("-z+y-2x+1/2").unwrap(),
             Coordinate {
@@ -261,11 +271,11 @@ mod tests {
         )
     }
     #[test]
-    fn test_particle_from_err() {
+    fn particle_from_err() {
         assert!(Particle::from_str("error patten").is_err(),)
     }
     #[test]
-    fn test_particle_from() {
+    fn particle_from() {
         assert_eq!(
             Particle::from_str("y-2x+1/2, x-2z+1/2, z-2y+1/2").unwrap(),
             Particle(
@@ -276,11 +286,11 @@ mod tests {
         )
     }
     #[test]
-    fn test_wyckoff_pos_from_err() {
+    fn wyckoff_pos_from_err() {
         assert!(WyckoffPos::from_str("error patten").is_err())
     }
     #[test]
-    fn test_wyckoff_pos_from() {
+    fn wyckoff_pos_from() {
         assert_eq!(
             WyckoffPos::from_str("(x,y,1/2)(-y,x-y,1/2)(-x+y,-x,1/2)").unwrap(),
             WyckoffPos {
@@ -295,7 +305,7 @@ mod tests {
         )
     }
     #[test]
-    fn test_wyckoff_pos_from_and_shift() {
+    fn wyckoff_pos_from_and_shift() {
         assert_eq!(
             WyckoffPos::from_str_and_shifts("(x,y,1/2); (-y,x-y,1/2)", vec![[0.1, 0.1, 0.1,]])
                 .unwrap(),
@@ -310,7 +320,7 @@ mod tests {
         )
     }
     #[test]
-    fn test_wyckoff_pos_can_be_cached() {
+    fn wyckoff_pos_can_be_cached() {
         assert_eq!(
             WyckoffPos::from_str_and_shifts("(1,1,1/2); (3/4,0,1/2)", vec![])
                 .unwrap()
@@ -319,7 +329,7 @@ mod tests {
         )
     }
     #[test]
-    fn test_wyckoff_pos_gen() {
+    fn wyckoff_pos_gen() {
         assert_eq!(
             WyckoffPos::from_str("(x,y,1/2),(-y,x-y,1/2),(-x+y,-x,1/2),(-x,-y,1/2)")
                 .unwrap()
@@ -328,7 +338,7 @@ mod tests {
         );
     }
     #[test]
-    fn test_wyckoff_pos_random_gen() {
+    fn wyckoff_pos_random_gen() {
         let wy = WyckoffPos::from_str("(x,y,1/2),(-y,x-y,1/2)").unwrap();
         assert_ne!(wy.random_gen(), wy.random_gen())
     }
@@ -342,7 +352,7 @@ mod tests {
         )
     }
     #[test]
-    fn test_gen_with_shift() {
+    fn gen_with_shift() {
         let tmp = WyckoffPos::from_str_and_shifts(
             "(x,y,1/2),	(-y,x-y,1/2);	(-x+y,-x,1/2)	(-x,-y,1/2)",
             vec![[0.3, 0.3, 0.3]],
@@ -364,7 +374,7 @@ mod tests {
         )
     }
     #[test]
-    fn test_ndarray_to_vec() {
+    fn ndarray_to_vec() {
         let a = arr2(&[[1, 2], [3, 4]]);
         assert_eq!(a.into_raw_vec(), [1, 2, 3, 4])
     }

@@ -5,8 +5,7 @@ homepage = 'https://github.com/yoshida-lab/crystallus'
 license = 'Apache-2'
 name = 'crystallus'
 publish = false
-repository = 'https://github.com/yoshida-lab/crystallus'
-version = '0.3.0'
+version = '0.3.0-rc1'
 
 [package.metadata.maturin]
 classifier = [
@@ -25,6 +24,9 @@ classifier = [
 maintainer = 'tsumina <liu.chang.1865@gmail.com>'
 requires-dist = [
   'peewee>=3.13.0',
+  'pandas>=1.0.0',
+  'pymatgen>=2020.9.14',
+  'matminer',
 ]
 requires-python = '>=3.6'
 
@@ -43,7 +45,7 @@ rayon = '1.5.1'
 version = "0.15.1"
 
 [dependencies.libcrystal]
-# features = ["intel-mkl"]
+features = []
 path = 'libcrystal'
 version = '^0.3.0'
 

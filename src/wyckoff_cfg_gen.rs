@@ -18,6 +18,7 @@ use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyTuple};
 use rayon::prelude::*;
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use libcrystal::{Float, WyckoffCfgGenerator as wyckoff_cfg_gen};
 
@@ -25,6 +26,7 @@ use libcrystal::{Float, WyckoffCfgGenerator as wyckoff_cfg_gen};
 #[text_signature = "(max_recurrent, n_jobs, **composition)"]
 pub struct WyckoffCfgGenerator {
     composition: BTreeMap<String, Float>,
+    priority: HashMap<usize, HashMap<String, Float>>,
     max_recurrent: u16,
     _n_jobs: i16,
 }
@@ -32,18 +34,33 @@ pub struct WyckoffCfgGenerator {
 #[pymethods]
 impl WyckoffCfgGenerator {
     #[new]
-    #[args("*", max_recurrent = "1_000", n_jobs = "-1", composition = "**")]
+    #[args(
+        "*",
+        max_recurrent = "1_000",
+        n_jobs = "-1",
+        priority = "None",
+        composition = "**"
+    )]
     fn new(
         max_recurrent: Option<u16>,
         n_jobs: Option<i16>,
+        priority: Option<&PyDict>,
         composition: Option<&PyDict>,
     ) -> PyResult<Self> {
+        // convert Option<T: FromPyObject> -> Option<D>
+        // if T.extract() return Err(e), pass this panic to python side
+        let priority: HashMap<usize, HashMap<String, Float>> = match priority {
+            Some(t) => t.extract()?,
+            _ => HashMap::new(),
+        };
         let composition = composition.clone();
+
         match composition {
             Some(cfg) => {
                 let composition: BTreeMap<String, Float> = cfg.extract()?;
                 Ok(WyckoffCfgGenerator {
                     max_recurrent: max_recurrent.unwrap_or(1000),
+                    priority,
                     composition,
                     _n_jobs: n_jobs.unwrap_or(-1),
                 })
@@ -70,7 +87,15 @@ impl WyckoffCfgGenerator {
 
     #[text_signature = "($self, spacegroup_num)"]
     fn gen_one(&self, py: Python<'_>, spacegroup_num: usize) -> PyResult<PyObject> {
-        let wy = wyckoff_cfg_gen::from_spacegroup_num(spacegroup_num, Some(self.max_recurrent));
+        let priority = match self.priority.get(&spacegroup_num) {
+            Some(h) => Some(h.clone()),
+            _ => None,
+        };
+        let wy = wyckoff_cfg_gen::from_spacegroup_num(
+            spacegroup_num,
+            Some(self.max_recurrent),
+            priority,
+        );
         match wy {
             Ok(wy) => match wy.gen(&self.composition) {
                 Err(e) => Err(PyValueError::new_err(e.to_string())),
@@ -102,11 +127,18 @@ impl WyckoffCfgGenerator {
             }
             1 => {
                 let sp_num = spacegroup_num[0];
-                let wy =
-                    match wyckoff_cfg_gen::from_spacegroup_num(sp_num, Some(self.max_recurrent)) {
-                        Ok(wy) => wy,
-                        Err(e) => return Err(PyValueError::new_err(e.to_string())),
-                    };
+                let priority = match self.priority.get(&sp_num) {
+                    Some(h) => Some(h.clone()),
+                    _ => None,
+                };
+                let wy = match wyckoff_cfg_gen::from_spacegroup_num(
+                    sp_num,
+                    Some(self.max_recurrent),
+                    priority,
+                ) {
+                    Ok(wy) => wy,
+                    Err(e) => return Err(PyValueError::new_err(e.to_string())),
+                };
 
                 //Do works
                 let ret: Vec<BTreeMap<String, Vec<String>>> = py.allow_threads(|| {
@@ -129,9 +161,14 @@ impl WyckoffCfgGenerator {
                 let dict = PyDict::new(py);
                 let mut tmp: Vec<wyckoff_cfg_gen> = Vec::new();
                 for sp_num in spacegroup_num.iter() {
+                    let priority = match self.priority.get(&sp_num) {
+                        Some(h) => Some(h.clone()),
+                        _ => None,
+                    };
                     let wy = match wyckoff_cfg_gen::from_spacegroup_num(
                         *sp_num,
                         Some(self.max_recurrent),
+                        priority,
                     ) {
                         Ok(wy) => wy,
                         Err(e) => return Err(PyValueError::new_err(e.to_string())),

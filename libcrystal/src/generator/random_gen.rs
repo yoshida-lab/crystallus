@@ -12,65 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod utils;
-
-use self::utils::{lll_reduce as _lll, pbc_all_distances as _pbc};
+use super::structure::{Crystal, CrystalGeneratorError, LatticeFn, RandomGeneratorOption};
+use crate::utils::pbc_all_distances;
 use crate::{wyckoff_pos::*, Float, SPG_TYPES, WY};
-use error::Error;
+
 use ndarray::{arr2, concatenate, Array2, ArrayView2, Axis};
 use rand::{thread_rng, Rng};
 use rand_distr::{Normal, Uniform};
 use std::collections::HashMap;
-use std::{error, fmt};
 
-// Covalent radius for element (Z=1) H to Cm (Z=96)
+// Covalent radius for element H (Z=1) to Cm (Z=96)
 const COVALENT_RADIUS: &'static str = std::include_str!("covalent_radius.json");
 lazy_static! {
     static ref RADIUS: HashMap<String, Float> = serde_json::from_str(COVALENT_RADIUS).unwrap();
 }
 
-#[inline]
-pub fn lll_reduce(basis: &Vec<[Float; 3]>, delta: Float) -> (Vec<Float>, Vec<Float>) {
-    let basis = arr2(basis);
-    let (basis, mapping) = _lll(&basis, Some(delta));
-    (basis.into_raw_vec(), mapping.into_raw_vec())
-}
-
-#[inline]
-pub fn pbc_all_distances(
-    lattice: &Vec<[Float; 3]>,
-    frac_coords: &Vec<[Float; 3]>,
-) -> Result<Vec<Float>, Box<dyn Error>> {
-    let (lattice, frac_coords) = (arr2(lattice), arr2(frac_coords));
-    let distances = _pbc(&lattice, &frac_coords)?;
-    Ok(distances.into_raw_vec())
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Crystal {
-    pub spacegroup_num: usize,
-    pub volume: Float,
-    pub lattice: Array2<Float>,
-    pub particles: Array2<Float>,
-    pub elements: Vec<String>,
-    pub wyckoff_letters: Vec<String>,
-}
-
-#[derive(Debug, Clone)]
-pub struct CrystalGeneratorError(String);
-
-impl fmt::Display for CrystalGeneratorError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(f, "crystal generator error: `{}`", self.0)
-    }
-}
-
-impl Error for CrystalGeneratorError {}
-
-pub type LatticeFn =
-    Box<dyn Fn() -> Result<(Vec<Float>, Vec<Float>, Float), CrystalGeneratorError> + Send + Sync>;
 // #[derive(Debug, Clone, PartialEq)]
-pub struct CrystalGenerator {
+pub struct RandomGenerator {
     pub spacegroup_num: usize,
     pub max_attempts_number: u16,
     pub verbose: bool,
@@ -78,22 +36,19 @@ pub struct CrystalGenerator {
     lattice_gen: LatticeFn,
 }
 
-impl<'a> CrystalGenerator {
+impl<'a> RandomGenerator {
     pub fn from_spacegroup_num(
         spacegroup_num: usize,
         estimated_volume: Float,
         estimated_variance: Float,
-        angle_range: Option<(Float, Float)>,
-        angle_tolerance: Option<Float>,
-        max_attempts_number: Option<u16>,
-        verbose: Option<bool>,
-    ) -> Result<CrystalGenerator, CrystalGeneratorError> {
+        options: RandomGeneratorOption,
+    ) -> Result<RandomGenerator, CrystalGeneratorError> {
         if !(1..=230).contains(&spacegroup_num) {
             return Err(CrystalGeneratorError(
                 "space group number is illegal".to_owned(),
             ));
         }
-        let verbose = verbose.unwrap_or(false);
+        let verbose = options.verbose;
         let shifts = match &SPG_TYPES[spacegroup_num - 1] {
             'A' => vec![[0., 1. / 2., 1. / 2.]],
             'B' => vec![[1. / 2., 0., 1. / 2.]],
@@ -124,8 +79,9 @@ impl<'a> CrystalGenerator {
             );
         });
 
-        let angle_tolerance = angle_tolerance.unwrap_or(20.);
-        let angle_range = angle_range.unwrap_or((30., 150.));
+        // set value for conditional parameters
+        let angle_tolerance = options.angle_tolerance;
+        let angle_range = options.angle_range;
 
         if angle_range.0 * 3. >= 360. {
             return Err(CrystalGeneratorError(
@@ -141,7 +97,11 @@ impl<'a> CrystalGenerator {
         let angle_dist = Uniform::new_inclusive(angle_range.0, angle_range.1);
         let volume_dist = Normal::new(estimated_volume, estimated_variance).unwrap();
 
-        let max_attempts_number = max_attempts_number.unwrap_or(5_000);
+        let max_attempts_number = options.max_attempts_number;
+
+        // note that closure in Rust is not a available type
+        // we have to use Box to wrap and save closure
+
         let lattice_gen: LatticeFn = match spacegroup_num {
             // Triclinic, α≠β≠γ≠；a≠b≠c
             1..=2 => Box::new(move || {
@@ -162,12 +122,12 @@ impl<'a> CrystalGenerator {
                         let mut abc: Vec<Float> =
                             thread_rng().sample_iter(length_dist).take(2).collect();
                         // c = a*b*c / a*b
-                        let c: Float = CrystalGenerator::get_multiplied_length(&vol, &angles)
+                        let c: Float = Self::get_multiplied_length(&vol, &angles)
                             / abc.iter().product::<Float>();
 
                         if low_length < c && c < high_length {
                             abc.push(c);
-                            return Ok((abc, angles, vol));
+                            return Ok((Self::lattice_from(abc, angles), vol));
                         }
                     }
                 }
@@ -189,12 +149,12 @@ impl<'a> CrystalGenerator {
                         let mut abc: Vec<Float> =
                             thread_rng().sample_iter(length_dist).take(2).collect();
                         // c = a*b*c / a*b
-                        let c: Float = CrystalGenerator::get_multiplied_length(&vol, &angles)
+                        let c: Float = Self::get_multiplied_length(&vol, &angles)
                             / abc.iter().product::<Float>();
 
                         if low_length < c && c < high_length {
                             abc.push(c);
-                            return Ok((abc, angles, vol));
+                            return Ok((Self::lattice_from(abc, angles), vol));
                         }
                     }
                 }
@@ -216,7 +176,7 @@ impl<'a> CrystalGenerator {
 
                     if low_length < c && c < high_length {
                         abc.push(c);
-                        return Ok((abc, angles, vol));
+                        return Ok((Self::lattice_from(abc, angles), vol));
                     }
                 }
                 return Err(CrystalGeneratorError(
@@ -235,7 +195,7 @@ impl<'a> CrystalGenerator {
 
                     if low_length < c && c < high_length {
                         let abc = vec![a, a, c];
-                        return Ok((abc, angles, vol));
+                        return Ok((Self::lattice_from(abc, angles), vol));
                     }
                 }
                 return Err(CrystalGeneratorError(
@@ -257,7 +217,7 @@ impl<'a> CrystalGenerator {
 
                         if low_length < c && c < high_length {
                             let abc = vec![a, a, c];
-                            return Ok((abc, angles, vol));
+                            return Ok((Self::lattice_from(abc, angles), vol));
                         }
                     }
                     return Err(CrystalGeneratorError(
@@ -268,12 +228,11 @@ impl<'a> CrystalGenerator {
                     for _ in 0..max_attempts_number {
                         // gen angles conditional
                         let angles = vec![thread_rng().sample(Uniform::new(angle_range.0, 90.)); 3];
-                        let c: Float =
-                            CrystalGenerator::get_multiplied_length(&vol, &angles).powf(1. / 3.);
+                        let c: Float = Self::get_multiplied_length(&vol, &angles).powf(1. / 3.);
 
                         if low_length < c && c < high_length {
                             let abc = vec![c, c, c];
-                            return Ok((abc, angles, vol));
+                            return Ok((Self::lattice_from(abc, angles), vol));
                         }
                     }
                     return Err(CrystalGeneratorError(
@@ -284,7 +243,6 @@ impl<'a> CrystalGenerator {
             // Hexagonal, α=β=90°，γ=120°；a=b≠c
             168..=194 => Box::new(move || {
                 let vol: Float = thread_rng().sample(volume_dist).abs();
-
                 // gen angles conditional
                 let angles = vec![90 as Float, 90., 120.];
                 for _ in 0..max_attempts_number {
@@ -295,7 +253,7 @@ impl<'a> CrystalGenerator {
 
                     if low_length < c && c < high_length {
                         let abc = vec![a, a, c];
-                        return Ok((abc, angles, vol));
+                        return Ok((Self::lattice_from(abc, angles), vol));
                     }
                 }
                 return Err(CrystalGeneratorError(
@@ -311,12 +269,12 @@ impl<'a> CrystalGenerator {
                 let c: Float = vol.powf(1. / 3.);
                 let abc = vec![c, c, c];
 
-                return Ok((abc, angles, vol));
+                return Ok((Self::lattice_from(abc, angles), vol));
             }),
             // others
             _ => return Err(CrystalGeneratorError("unknown error".to_owned())),
         };
-        Ok(CrystalGenerator {
+        Ok(RandomGenerator {
             spacegroup_num,
             wy_pos_generator,
             verbose,
@@ -325,7 +283,6 @@ impl<'a> CrystalGenerator {
         })
     }
 
-    #[inline]
     fn get_covalent_radius(element: &Vec<String>) -> Vec<Float> {
         let mut ret: Vec<Float> = Vec::new();
         for e in element.iter() {
@@ -334,7 +291,6 @@ impl<'a> CrystalGenerator {
         ret
     }
 
-    #[inline]
     fn lattice_from(abc: Vec<Float>, angles: Vec<Float>) -> Array2<Float> {
         let (a, b, c, alpha, beta, gamma) = (
             abc[0],
@@ -345,11 +301,8 @@ impl<'a> CrystalGenerator {
             angles[2].to_radians(),
         );
         let (cos_alpha, cos_beta, cos_gamma) = (alpha.cos(), beta.cos(), gamma.cos());
-
         let (sin_alpha, sin_beta) = (alpha.sin(), beta.sin());
-
         let gamma_star = (cos_alpha * cos_beta - cos_gamma) / (sin_alpha * sin_beta);
-
         // Sometimes rounding errors result in values slightly > 1.
         let gamma_star = gamma_star.min(1.).max(-1.).acos();
         let vector_a = [a * sin_beta, 0.0, a * cos_beta];
@@ -371,12 +324,16 @@ impl<'a> CrystalGenerator {
         check_distance: Option<bool>,
         distance_scale_factor: Option<Float>,
     ) -> Result<Crystal, CrystalGeneratorError> {
-        let checker = check_distance.unwrap_or(true);
+        // set default value for options
+        let check_distance = check_distance.unwrap_or(true);
         let distance_scale_factor = distance_scale_factor.unwrap_or(0.1);
+
+        // prepare containers
         let mut elements_: Vec<String> = Vec::new();
         let mut wyckoff_letters_: Vec<String> = Vec::new();
-        let mut wy_gens_: Vec<&WyckoffPos> = Vec::new();
-        // test all wyckoff letters and build elements list
+        let mut wy_gens_: Vec<&WyckoffPos> = Vec::new(); //  [(wyckoff_pos_gen, wyckoff_letter)...]
+
+        // iter all wyckoff letters and elements
         for (e, w) in elements.iter().zip(wyckoff_letters) {
             match self.wy_pos_generator.get(w) {
                 Some((multiplicity, wy_gen)) => {
@@ -393,8 +350,7 @@ impl<'a> CrystalGenerator {
             }
         }
         // generate lengths and angles, then transfer to a lattice object
-        let (abc, angles, vol) = (self.lattice_gen)()?;
-        let lattice = CrystalGenerator::lattice_from(abc, angles);
+        let (lattice, vol) = (self.lattice_gen)()?;
 
         // generate particles for each element, respectively
         let mut all_particles: Vec<Array2<Float>> = Vec::new();
@@ -415,7 +371,7 @@ impl<'a> CrystalGenerator {
 
         // check distances between all particles,
         // if ok, return generated crystal object
-        if !checker {
+        if !check_distance {
             return Ok(Crystal {
                 spacegroup_num: self.spacegroup_num,
                 elements: elements_,
@@ -488,10 +444,10 @@ impl<'a> CrystalGenerator {
         wyckoff_letters: &Vec<String>,
         distance_scale_factor: &Float,
     ) -> bool {
-        match _pbc(lattice, particles) {
+        match pbc_all_distances(lattice, particles) {
             Ok(distance_matrix) => {
                 let ii = distance_matrix.shape()[0];
-                let radius = CrystalGenerator::get_covalent_radius(elements);
+                let radius = Self::get_covalent_radius(elements);
                 for i in 0..(ii - 1) {
                     for j in (i + 1)..ii {
                         if distance_matrix[[i, j]]
@@ -523,10 +479,38 @@ impl<'a> CrystalGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use approx::assert_ulps_eq;
-    use ndarray::arr2;
+    use approx::{assert_abs_diff_eq, assert_ulps_eq};
+    use core::f32::consts::PI;
+    use ndarray::{arr2, s};
+
+    fn lattice_to(lattice: Array2<Float>) -> (Vec<Float>, Vec<Float>) {
+        fn abs_cap(val: Float) -> Float {
+            val.min(1.).max(-1.)
+        }
+
+        let abc = lattice
+            .mapv(|a| a.powi(2))
+            .sum_axis(Axis(1))
+            .mapv(f64::sqrt)
+            .into_raw_vec();
+
+        let mut angles = vec![0. as Float, 0., 0.];
+        for i in 0..3 {
+            let j = (i + 1) % 3;
+            let k = (i + 2) % 3;
+            let mj = lattice.slice(s![j, ..]);
+            let mk = lattice.slice(s![k, ..]);
+            angles[i] = abs_cap(mj.dot(&mk) / (abc[j] * abc[k]));
+        }
+        angles = angles
+            .into_iter()
+            .map(|x| x.acos() * 180.0 / PI as Float)
+            .collect();
+        (abc, angles)
+    }
+
     #[test]
-    fn test_get_covalent_radius() {
+    fn get_covalent_radius() {
         let elements = vec![
             "Li".to_owned(),
             "P".to_owned(),
@@ -535,7 +519,7 @@ mod tests {
             "Pd".to_owned(),
         ];
         assert_eq!(
-            CrystalGenerator::get_covalent_radius(&elements),
+            RandomGenerator::get_covalent_radius(&elements),
             vec![1.21, 1.04, 0.64, 1.52, 1.33]
         )
     }
@@ -545,12 +529,12 @@ mod tests {
         expected = "called `Result::unwrap()` on an `Err` value: CrystalGeneratorError(\"space group number is illegal\")"
     )]
     fn should_panic_when_using_wrong_spacegroup_number() {
-        CrystalGenerator::from_spacegroup_num(300, 100., 10., None, None, None, None).unwrap();
+        RandomGenerator::from_spacegroup_num(300, 100., 10., Default::default()).unwrap();
     }
 
     #[test]
     fn should_return_space_group_illegal_err() {
-        let tmp = CrystalGenerator::from_spacegroup_num(300, 100., 10., None, None, None, None);
+        let tmp = RandomGenerator::from_spacegroup_num(300, 100., 10., Default::default());
         match tmp {
             Err(e) => assert_eq!(
                 format!("{}", e),
@@ -562,14 +546,14 @@ mod tests {
 
     #[test]
     fn should_return_angle_range_illegal_err() {
-        let tmp = CrystalGenerator::from_spacegroup_num(
+        let tmp = RandomGenerator::from_spacegroup_num(
             1,
             100.,
             10.,
-            Some((160., 170.)),
-            None,
-            None,
-            None,
+            RandomGeneratorOption {
+                angle_range: (160., 170.),
+                ..Default::default()
+            },
         );
         match tmp {
             Err(e) => assert_eq!(
@@ -582,60 +566,34 @@ mod tests {
     #[test]
     #[should_panic(expected = "reached the max attempts (in lattice generation)")]
     fn should_panic_when_reach_max_attempts_number() {
-        let tmp = CrystalGenerator::from_spacegroup_num(
+        let tmp = RandomGenerator::from_spacegroup_num(
             2,
             1000.,
             10.,
-            Some((119.999, 200.)),
-            None,
-            None,
-            None,
+            RandomGeneratorOption {
+                angle_range: (119.999, 200.),
+                ..Default::default()
+            },
         )
         .unwrap();
         (tmp.lattice_gen)().unwrap();
     }
 
     #[test]
-    fn test_lll_reduce() -> Result<(), Box<dyn Error>> {
-        // lattice and frac coords are generated by this generator under space group 63,
-        // and the following values are validated by pymatgen
-        let lattice = vec![
-            [14.019043922424316, 0.0, -6.127918936726928e-07],
-            [
-                -4.818087404601101e-07,
-                6.381750106811523,
-                -2.7895515586351394e-07,
-            ],
-            [0.0, 0.0, 9.891742706298828],
-        ];
-        let (basis, mapping) = lll_reduce(&lattice, 0.75);
-        assert_eq!(
-            &basis,
-            &[
-                -4.818087404601101e-07,
-                6.381750106811523e+00,
-                -2.7895515586351394e-07,
-                0.00000000e+00,
-                0.00000000e+00,
-                9.891742706298828e+00,
-                1.4019043922424316e+01,
-                0.00000000e+00,
-                -6.127918936726928e-07
-            ],
-            // epsilon = 1e-7
-        );
-        assert_eq!(mapping, vec![0., 1., 0., 0., 0., 1., 1., 0., 0.]);
+    fn create_crystal_generator_from_spacegroup_with_option() -> Result<(), CrystalGeneratorError> {
+        let tmp = RandomGenerator::from_spacegroup_num(
+            2,
+            1000.,
+            0.,
+            RandomGeneratorOption {
+                angle_range: (70., 71.),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let (lattice, vol) = (tmp.lattice_gen)()?;
+        let (abc, angles) = lattice_to(lattice);
 
-        Ok(())
-    }
-
-    #[test]
-    fn test_create_crystal_generator_from_spacegroup_with_option(
-    ) -> Result<(), CrystalGeneratorError> {
-        let tmp =
-            CrystalGenerator::from_spacegroup_num(2, 1000., 0., Some((70., 71.)), None, None, None)
-                .unwrap();
-        let (abc, angles, vol) = (tmp.lattice_gen)()?;
         assert_ulps_eq!(vol, 1000.);
         assert!((5. < abc[0]) & (abc[0] < 15.));
         assert!((5. < abc[1]) & (abc[1] < 15.));
@@ -648,31 +606,25 @@ mod tests {
     }
 
     #[test]
-    fn test_crystal_generator_gen_lattice() -> Result<(), CrystalGeneratorError> {
+    fn crystal_generator_gen_lattice() -> Result<(), CrystalGeneratorError> {
         let tmp =
-            CrystalGenerator::from_spacegroup_num(200, 1000., 10., None, None, None, None).unwrap();
-        let (abc, angles, _vol) = (tmp.lattice_gen)()?;
+            RandomGenerator::from_spacegroup_num(200, 1000., 10., Default::default()).unwrap();
+        let (lattice, _vol) = (tmp.lattice_gen)()?;
+        let (abc, angles) = lattice_to(lattice);
         assert!(abc.len() == 3);
         assert!(abc.iter().eq(abc.iter()), "{}", true);
         assert!(angles.len() == 3);
         assert!(angles.iter().eq(angles.iter()), "{}", true);
         assert!(9.5 < abc[0] && abc[0] < 10.5);
-        assert!(angles[0] == 90.);
+        assert_abs_diff_eq!(angles[0], 90., epsilon = 1e-5);
         Ok(())
     }
 
     #[test]
-    fn test_check_distance() {
-        let tmp = CrystalGenerator::from_spacegroup_num(
-            12,
-            145.75949096679688,
-            20.,
-            None,
-            None,
-            None,
-            None,
-        )
-        .unwrap();
+    fn check_distance() {
+        let tmp =
+            RandomGenerator::from_spacegroup_num(12, 145.75949096679688, 20., Default::default())
+                .unwrap();
         let lattice = arr2(&[
             [14.019043922424316, 0.0, -6.127918936726928e-07],
             [
@@ -725,7 +677,7 @@ mod tests {
     }
 
     #[test]
-    fn test_crystal_generate() -> Result<(), CrystalGeneratorError> {
+    fn crystal_generate() -> Result<(), CrystalGeneratorError> {
         /*
         space group 63
         ======================================================
@@ -736,7 +688,7 @@ mod tests {
              4       |         a      | (0,0,0) (0,0,1/2)
         ------------------------------------------------------
         */
-        let cg = CrystalGenerator::from_spacegroup_num(63, 1000., 10., None, None, None, None)?;
+        let cg = RandomGenerator::from_spacegroup_num(63, 1000., 10., Default::default())?;
         let cry = cg.gen(
             &vec!["Li".to_owned(), "P".to_owned()],
             &vec!["a".to_owned(), "b".to_owned()],

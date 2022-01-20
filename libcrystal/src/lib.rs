@@ -16,11 +16,13 @@
 extern crate lazy_static;
 extern crate blas_src;
 
-mod crystal_gen;
+mod generator;
+mod utils;
+pub mod wrap;
 mod wyckoff_cfg;
 mod wyckoff_pos;
 
-pub use crystal_gen::*;
+pub use generator::*;
 pub use wyckoff_cfg::*;
 pub use wyckoff_pos::*;
 
