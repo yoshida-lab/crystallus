@@ -23,7 +23,7 @@ use std::collections::HashMap;
 use libcrystal::{Float, WyckoffCfgGenerator as wyckoff_cfg_gen};
 
 #[pyclass(module = "crystallus")]
-#[text_signature = "(max_recurrent, n_jobs, **composition)"]
+#[pyo3(text_signature = "(max_recurrent, n_jobs, **composition)")]
 pub struct WyckoffCfgGenerator {
     composition: BTreeMap<String, Float>,
     priority: HashMap<usize, HashMap<String, Float>>,
@@ -106,7 +106,7 @@ impl WyckoffCfgGenerator {
     }
 
     #[args(spacegroup_num = "*")]
-    #[text_signature = "($self, size, /, *spacegroup_num)"]
+    #[pyo3(text_signature = "($self, size, /, *spacegroup_num)")]
     fn gen_many(&self, py: Python<'_>, size: i32, spacegroup_num: &PyTuple) -> PyResult<PyObject> {
         let spacegroup_num: Vec<usize> = match spacegroup_num.extract() {
             Ok(m) => m,

@@ -23,7 +23,9 @@ use libcrystal::{
 };
 
 #[pyclass(module = "crystallus")]
-#[text_signature = "(spacegroup_num, estimated_volume, estimated_variance, *, min_distance_tolerance, angle_range, angle_tolerance, max_recurrent, n_jobs)"]
+#[pyo3(
+    text_signature = "(spacegroup_num, estimated_volume, estimated_variance, *, min_distance_tolerance, angle_range, angle_tolerance, max_recurrent, n_jobs)"
+)]
 pub struct CrystalGenerator {
     _crystal_gen: crystal_gen,
     _n_jobs: i16,
