@@ -85,7 +85,7 @@ impl WyckoffCfgGenerator {
         Ok(())
     }
 
-    #[text_signature = "($self, spacegroup_num)"]
+    #[pyo3(text_signature = "($self, spacegroup_num)")]
     fn gen_one(&self, py: Python<'_>, spacegroup_num: usize) -> PyResult<PyObject> {
         let priority = match self.priority.get(&spacegroup_num) {
             Some(h) => Some(h.clone()),

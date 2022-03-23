@@ -47,7 +47,7 @@ approx = '0.5.0'
 
 [dev-dependencies.ndarray]
 features = ['approx']
-version = '0.15.2'
+version = '0.15.4'
 
 # dev dependencies
 [dev-dependencies.blas-src]

@@ -136,7 +136,8 @@ impl CrystalGenerator {
         self._crystal_gen.verbose = verbose;
         Ok(())
     }
-    #[text_signature = "($self, check_distance, atomic_distance_tolerance, /, **cfg)"]
+
+    #[pyo3(text_signature = "($self, check_distance, atomic_distance_tolerance, /, **cfg)")]
     #[args(check_distance = true, atomic_distance_tolerance = "0.1", cfg = "**")]
     fn gen_one(
         &self,
@@ -194,7 +195,9 @@ impl CrystalGenerator {
         }
     }
 
-    #[text_signature = "($self, expect_size, max_attempts, check_distance, distance_scale_factor, /, *cfgs)"]
+    #[pyo3(
+        text_signature = "($self, expect_size, max_attempts, check_distance, distance_scale_factor, /, *cfgs)"
+    )]
     #[args(
         max_attempts = "None",
         check_distance = true,
