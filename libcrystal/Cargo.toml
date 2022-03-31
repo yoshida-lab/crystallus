@@ -26,41 +26,22 @@ rand_distr = '0.4.3'
 rayon = '1.5.1'
 regex = '1.5.4'
 serde_json = '1.0.75'
-
-[dependencies.blas-src]
-branch = 'master'
-default-features = false
-git = "https://github.com/yoshida-lab/blas-src"
-
-[dependencies.ndarray]
-features = ['rayon', 'blas']
-version = '0.15.4'
+ndarray = {version = "^0.15.4", features = ['rayon', 'blas']}
 
 [dependencies.ndarray-linalg]
 branch = "master"
 default-features = false
-git = "https://github.com/rust-ndarray/ndarray-linalg"
-# version = '0.13.1'
+git = "https://github.com/TsumiNa/ndarray-linalg.git"
 
 [dev-dependencies]
-approx = '0.5.0'
-
-[dev-dependencies.ndarray]
-features = ['approx']
-version = '0.15.4'
-
-# dev dependencies
-[dev-dependencies.blas-src]
-branch = 'master'
-default-features = false
-features = ['openblas']
-git = "https://github.com/yoshida-lab/blas-src"
+approx = '^0.5.1'
+ndarray = {version = "^0.15.4", features = ['rayon', 'blas', 'approx-0_5']}
 
 [dev-dependencies.ndarray-linalg]
 branch = "master"
 default-features = false
+git = "https://github.com/TsumiNa/ndarray-linalg.git"
 features = ['openblas-system']
-git = "https://github.com/rust-ndarray/ndarray-linalg"
 
 # features
 [features]

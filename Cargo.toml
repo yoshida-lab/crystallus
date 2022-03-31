@@ -28,7 +28,7 @@ requires-dist = [
   'pymatgen>=2020.9.14',
   'matminer',
 ]
-requires-python = '>=3.6'
+requires-python = '>=3.7'
 
 [workspace]
 members = ['libcrystal']
@@ -42,7 +42,7 @@ itertools = '0.10.3'
 rayon = '1.5.1'
 
 [dependencies.pyo3]
-version = "0.15.1"
+version = "0.16.2"
 
 [dependencies.libcrystal]
 features = []
