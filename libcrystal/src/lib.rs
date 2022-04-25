@@ -16,12 +16,13 @@
 extern crate lazy_static;
 
 mod generator;
-mod utils;
-pub mod wrap;
+mod structure;
+pub mod utils;
 mod wyckoff_cfg;
 mod wyckoff_pos;
 
 pub use generator::*;
+pub use structure::*;
 pub use wyckoff_cfg::*;
 pub use wyckoff_pos::*;
 
@@ -50,8 +51,14 @@ pub const SPG_TYPES: [char; 230] = [
 ];
 
 /// Wyckoff table for all 230 space groups.
-const WYCKOFFS: &'static str = std::include_str!("wyckoffs.json");
+const WYCKOFFS: &'static str = std::include_str!("external/wyckoffs.json");
 lazy_static! {
     static ref WY: Vec<HashMap<String, (usize, bool, String)>> =
         serde_json::from_str(WYCKOFFS).unwrap();
+}
+
+// Covalent radius for element H (Z=1) to Cm (Z=96)
+const COVALENT_RADIUS: &'static str = std::include_str!("external/covalent_radius.json");
+lazy_static! {
+    static ref RADIUS: HashMap<String, Float> = serde_json::from_str(COVALENT_RADIUS).unwrap();
 }

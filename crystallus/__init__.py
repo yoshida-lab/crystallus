@@ -14,7 +14,7 @@
 
 # import mkl as _  # for side effect
 
-from .crystallus import lll_reduce, pbc_all_distances
+# from .crystallus.utils import lll_reduce, pbc_all_distances
 from .wyckoff_cfg_generator import WyckoffCfgGenerator
 from .crystal_generator import CrystalGenerator
 from .wyckoff_db import Wyckoff as WyckoffDB, SpaceGroup as SpaceGroupDB

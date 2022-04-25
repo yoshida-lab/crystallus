@@ -27,7 +27,11 @@ use libcrystal::{Float, WyckoffCfgGenerator as wyckoff_cfg_gen};
 pub struct WyckoffCfgGenerator {
     composition: BTreeMap<String, Float>,
     priority: HashMap<usize, HashMap<String, Float>>,
+
+    #[pyo3(get, set)]
     max_recurrent: u16,
+
+    #[pyo3(get, set)]
     _n_jobs: i16,
 }
 
@@ -67,22 +71,6 @@ impl WyckoffCfgGenerator {
             }
             _ => Err(PyValueError::new_err("no configurations for generation")),
         }
-    }
-
-    #[getter(max_recurrent)]
-    fn max_recurrent(&self) -> PyResult<u16> {
-        Ok(self.max_recurrent)
-    }
-
-    #[getter(n_jobs)]
-    fn n_jobs(&self) -> PyResult<i16> {
-        Ok(self._n_jobs)
-    }
-
-    #[setter(n_jobs)]
-    fn set_n_jobs(&mut self, n: i16) -> PyResult<()> {
-        self._n_jobs = n;
-        Ok(())
     }
 
     #[pyo3(text_signature = "($self, spacegroup_num)")]

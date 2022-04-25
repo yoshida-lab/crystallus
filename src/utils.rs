@@ -17,7 +17,7 @@ use pyo3::prelude::*;
 use pyo3::types::PySequence;
 
 use libcrystal::{
-    wrap::{lll_reduce as _lll, pbc_all_distances as _pbc},
+    utils::{lll_reduce as _lll, pbc_all_distances as _pbc},
     Float,
 };
 

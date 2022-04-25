@@ -1,11 +1,11 @@
 # Copyright 2021 TsumiNa
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,8 +24,8 @@ class CrystalGenerator(object):
 
     def __init__(self,
                  spacegroup_num: int,
-                 estimated_volume: float,
-                 estimated_variance: float,
+                 volume_of_cell: float,
+                 variance_of_volume: float,
                  *,
                  angle_range: Tuple[float, float] = (30., 150.),
                  angle_tolerance: float = 20.,
@@ -43,11 +43,11 @@ class CrystalGenerator(object):
         ----------
         spacegroup_num:
             Specify the spacegroup.
-        estimated_volume:
+        volume_of_cell:
             The estimated volume of primitive cell. Unit is Å^3.
-        estimated_variance:
+        variance_of_volume:
             The estimated variance of volume prediction. Unit is Å^3.
-            ``estimated_volume`` and ``estimated_variance`` will be used to build
+            ``volume_of_cell`` and ``variance_of_volume`` will be used to build
             a Gaussion distribution for the sampling of volume of primitive cell.
             We will use the abstract valuse if sampled volume is negative.
         angle_range:
@@ -97,20 +97,18 @@ class CrystalGenerator(object):
         else:
             self._lattice = lattice
 
-        self._estimated_volume = estimated_volume
-        self._estimated_variance = estimated_variance
+        self._volume_of_cell = volume_of_cell
+        self._variance_of_volume = variance_of_volume
         self._angle_range = angle_range
         self._angle_tolerance = angle_tolerance
-        self._max_attempts_number = max_attempts_number
         self._empirical_coords = empirical_coords
         self._empirical_coords_variance = empirical_coords_variance
         self._empirical_coords_sampling_rate = empirical_coords_sampling_rate
         self._empirical_coords_loose_sampling = empirical_coords_loose_sampling
-        self._spacegroup_num = spacegroup_num
 
         self._cg = _CG(spacegroup_num=spacegroup_num,
-                       estimated_volume=estimated_volume,
-                       estimated_variance=estimated_variance,
+                       volume_of_cell=volume_of_cell,
+                       variance_of_volume=variance_of_volume,
                        angle_range=angle_range,
                        angle_tolerance=angle_tolerance,
                        lattice=lattice,
@@ -123,12 +121,12 @@ class CrystalGenerator(object):
                        verbose=verbose)
 
     @property
-    def estimated_volume(self):
-        return self._estimated_volume
+    def volume_of_cell(self):
+        return self._volume_of_cell
 
     @property
-    def estimated_variance(self):
-        return self._estimated_variance
+    def variance_of_volume(self):
+        return self._variance_of_volume
 
     @property
     def angle_range(self):
@@ -140,7 +138,7 @@ class CrystalGenerator(object):
 
     @property
     def max_attempts_number(self):
-        return self._max_attempts_number
+        return self._cg.max_attempts_number
 
     @property
     def empirical_coords(self):
@@ -164,7 +162,7 @@ class CrystalGenerator(object):
 
     @property
     def spacegroup_num(self):
-        return self._spacegroup_num
+        return self._cg.spacegroup_num
 
     @property
     def n_jobs(self):
@@ -174,19 +172,7 @@ class CrystalGenerator(object):
     def n_jobs(self, n):
         self._cg.n_jobs = n
 
-    @property
-    def verbose(self):
-        return self._cg.verbose
-
-    @verbose.setter
-    def verbose(self, n):
-        self._cg.verbose = n
-
-    def gen_one(self,
-                *,
-                check_distance: bool = True,
-                distance_scale_factor: float = 0.1,
-                **cfg: Dict[str, Tuple[str]]):
+    def gen_one(self, *, check_distance: bool = True, distance_scale_factor: float = 0.1, **cfg: Dict[str, Tuple[str]]):
         """Try to generate a legal crystal structure with given configuration set.
 
         Parameters
@@ -325,8 +311,8 @@ class CrystalGenerator(object):
     def __repr__(self):
         return f"CrystalGenerator(\
             \n    spacegroup_num={self.spacegroup_num},\
-            \n    estimated_volume={self.estimated_volume},\
-            \n    estimated_variance={self.estimated_variance},\
+            \n    volume_of_cell={self.volume_of_cell},\
+            \n    variance_of_volume={self.variance_of_volume},\
             \n    angle_range={self.angle_range},\
             \n    angle_tolerance={self.angle_tolerance},\
             \n    max_attempts_number={self.max_attempts_number},\

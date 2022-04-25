@@ -1,19 +1,20 @@
 [package]
 authors = ['tsumina <liu.chang.1865@gmail.com>']
-edition = '2018'
+edition = '2021'
 license = 'Apache-2'
 name = 'libcrystal'
 repository = 'https://github.com/yoshida-lab/crystallus'
 version = '0.3.0'
 workspace = '..'
 
-[[bench]]
-name = 'wyckoff_gen_one'
-path = 'benches/bench_wyckoff_gen_one.rs'
+# benchmark only works on nightly builds
+# [[bench]]
+# name = 'wyckoff_gen_one'
+# path = 'benches/bench_wyckoff_gen_one.rs'
 
-[[bench]]
-name = 'wyckoff_gen_many'
-path = 'benches/bench_wyckoff_gen_many.rs'
+# [[bench]]
+# name = 'wyckoff_gen_many'
+# path = 'benches/bench_wyckoff_gen_many.rs'
 
 [lib]
 name = 'libcrystal'

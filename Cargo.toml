@@ -1,11 +1,11 @@
 [package]
 authors = ['tsumina <liu.chang.1865@gmail.com>']
-edition = '2018'
+edition = '2021'
 homepage = 'https://github.com/yoshida-lab/crystallus'
 license = 'Apache-2'
 name = 'crystallus'
 publish = false
-version = '0.3.0-rc1'
+version = '0.3.0-rc2'
 
 [package.metadata.maturin]
 classifier = [
@@ -16,10 +16,9 @@ classifier = [
   'Operating System :: Microsoft :: Windows',
   'Operating System :: MacOS',
   'Operating System :: Unix',
-  'Programming Language :: Python :: 3.6',
-  'Programming Language :: Python :: 3.7',
   'Programming Language :: Python :: 3.8',
   'Programming Language :: Python :: 3.9',
+  'Programming Language :: Python :: 3.10',
 ]
 maintainer = 'tsumina <liu.chang.1865@gmail.com>'
 requires-dist = [
@@ -28,7 +27,7 @@ requires-dist = [
   'pymatgen>=2020.9.14',
   'matminer',
 ]
-requires-python = '>=3.7'
+requires-python = '>=3.8'
 
 [workspace]
 members = ['libcrystal']
@@ -40,12 +39,13 @@ name = 'crystallus'
 [dependencies]
 itertools = '0.10.3'
 rayon = '1.5.1'
+either = "1.6.1"
 
 [dependencies.pyo3]
 version = "0.16.2"
 
 [dependencies.libcrystal]
-features = []
+features = ["openblas"]
 path = 'libcrystal'
 version = '^0.3.0'
 

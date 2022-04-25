@@ -1,11 +1,11 @@
 # Copyright 2021 TsumiNa
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -38,8 +38,8 @@ def test_crystal_gen_one():
     assert structure['spacegroup_num'] == 207
     assert structure['species'] == ['C', 'C', 'O', 'O', 'O']
     assert structure['wyckoff_letters'] == ['a', 'b', 'd', 'd', 'd']
-    assert structure['coords'] == [[0., 0., 0.], [1 / 2, 1 / 2, 1 / 2], [1 / 2, 0., 0.],
-                                   [0., 1 / 2, 0.], [0., 0., 1 / 2]]
+    assert structure['coords'] == [[0., 0., 0.], [1 / 2, 1 / 2, 1 / 2], [1 / 2, 0., 0.], [0., 1 / 2, 0.],
+                                   [0., 0., 1 / 2]]
 
 
 def test_crystal_gen_one_with_lattice():
@@ -158,11 +158,7 @@ def test_crystal_gen_many_4():
 
 def test_crystal_gen_many_5():
     cg = CrystalGenerator(33, 1168, 15)
-    comp = {
-        'Ag': ['a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'],
-        'Ge': ['a'],
-        'S': ['a', 'a', 'a', 'a', 'a', 'a']
-    }
+    comp = {'Ag': ['a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'], 'Ge': ['a'], 'S': ['a', 'a', 'a', 'a', 'a', 'a']}
 
     # distance error
     structure = cg.gen_many(100, comp)
