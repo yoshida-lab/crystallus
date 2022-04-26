@@ -1,6 +1,29 @@
+[package]
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+classifier = [
+  'Development Status :: 4 - Beta',
+  'Intended Audience :: Science/Research',
+  'License :: OSI Approved :: BSD License',
+  'Natural Language :: English',
+  'Operating System :: Microsoft :: Windows',
+  'Operating System :: MacOS',
+  'Operating System :: Unix',
+  'Programming Language :: Python :: 3.8',
+  'Programming Language :: Python :: 3.9',
+  'Programming Language :: Python :: 3.10',
+]
+dependencies = [
+  'peewee>=3.13.0',
+  'pandas>=1.0.0',
+  'pymatgen>=2021.0.0',
+]
+maintainer = 'tsumina <liu.chang.1865@gmail.com>'
+
 [build-system]
 build-backend = 'maturin'
 requires = ["maturin>=0.12,<0.13"]
 
 [tool.maturin]
 compatibility = "linux"
+

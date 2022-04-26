@@ -22,17 +22,16 @@ use std::collections::HashMap;
 
 use libcrystal::{Float, WyckoffCfgGenerator as wyckoff_cfg_gen};
 
-#[pyclass(module = "crystallus")]
+#[pyclass(module = "core")]
 #[pyo3(text_signature = "(max_recurrent, n_jobs, **composition)")]
 pub struct WyckoffCfgGenerator {
     composition: BTreeMap<String, Float>,
     priority: HashMap<usize, HashMap<String, Float>>,
 
     #[pyo3(get, set)]
-    max_recurrent: u16,
-
+    n_jobs: i16,
     #[pyo3(get, set)]
-    _n_jobs: i16,
+    max_recurrent: u16,
 }
 
 #[pymethods]
@@ -66,7 +65,7 @@ impl WyckoffCfgGenerator {
                     max_recurrent: max_recurrent.unwrap_or(1000),
                     priority,
                     composition,
-                    _n_jobs: n_jobs.unwrap_or(-1),
+                    n_jobs: n_jobs.unwrap_or(-1),
                 })
             }
             _ => Err(PyValueError::new_err("no configurations for generation")),
@@ -105,8 +104,8 @@ impl WyckoffCfgGenerator {
             }
         };
         // parallel using rayon
-        if self._n_jobs > 0 {
-            std::env::set_var("RAYON_NUM_THREADS", self._n_jobs.to_string());
+        if self.n_jobs > 0 {
+            std::env::set_var("RAYON_NUM_THREADS", self.n_jobs.to_string());
         }
 
         match spacegroup_num.len() {

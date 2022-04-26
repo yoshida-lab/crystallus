@@ -14,11 +14,15 @@
 
 # import mkl as _  # for side effect
 
-# from .crystallus.utils import lll_reduce, pbc_all_distances
 from .wyckoff_cfg_generator import WyckoffCfgGenerator
 from .crystal_generator import CrystalGenerator
 from .wyckoff_db import Wyckoff as WyckoffDB, SpaceGroup as SpaceGroupDB
 
-__all__ = ["CrystalGenerator", "WyckoffCfgGenerator", "WyckoffDB", "SpaceGroupDB", "pbc_all_distances", "lll_reduce"]
+__all__ = [
+    "CrystalGenerator",
+    "WyckoffCfgGenerator",
+    "WyckoffDB",
+    "SpaceGroupDB",
+]
 
-__version__ = "0.3.0.rc1"
+__version__ = "0.3.0.rc2"

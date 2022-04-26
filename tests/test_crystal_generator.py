@@ -16,7 +16,7 @@ import pytest
 import numpy as np
 import numpy.testing as npt
 
-from pymatgen import Lattice
+from pymatgen.core import Lattice
 from crystallus import CrystalGenerator
 
 

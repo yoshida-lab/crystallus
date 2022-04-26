@@ -1,20 +1,22 @@
 import re
 from copy import deepcopy
-from typing import List, Tuple, Union, Callable
+from typing import Callable, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from joblib import Parallel, delayed
-from matminer.featurizers.site import CrystalNNFingerprint
-from matminer.featurizers.structure import SiteStatsFingerprint
-from pymatgen import Structure
+from pymatgen.core import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 from crystallus import SpaceGroupDB
 
+from .core.utils import lll_reduce, pbc_all_distances
+
 __call__ = [
-    'WyckoffPositionConverter', 'build_structure', 'get_equivalent_coords',
-    'structure_dissimilarity'
+    'WyckoffPositionConverter',
+    'build_structure',
+    'get_equivalent_coords',
+    'lll_reduce',
+    'pbc_all_distances',
 ]
 
 
@@ -64,24 +66,23 @@ class _Coordinate:
         return x_coeff, y_coeff, z_coeff, const
 
 
-class _Particle():
-    patten = re.compile(r',\s*')
-
-    def __init__(self):
-        self.Coordinate = _Coordinate()
-
-    def __call__(self, position):
-        return [self.Coordinate(coord) for coord in self.patten.split(position)]
-
-
 class WyckoffPositionConverter():
     """Convert fraction coordinates into Wyckoff position formate. """
+
+    class _Particle():
+        patten = re.compile(r',\s*')
+
+        def __init__(self):
+            self.Coordinate = _Coordinate()
+
+        def __call__(self, position):
+            return [self.Coordinate(coord) for coord in self.patten.split(position)]
 
     patten = re.compile(r'(?<=\)),\s*')
 
     def __init__(self, spacegroup_num: int):
         wys = SpaceGroupDB.get(SpaceGroupDB.spacegroup_num == spacegroup_num).wyckoffs
-        self.particle = _Particle()
+        self.particle = self._Particle()
         self.wyckoff_pos = {wy.letter: self.patten.split(wy.positions)[0][1:-1] for wy in wys}
 
     def _inner(self, wy_letter, coord):
@@ -111,19 +112,16 @@ class WyckoffPositionConverter():
                  data: pd.DataFrame = None):
         if data is not None:
             if not isinstance(wyckoff_letters, str) or not isinstance(coords, str):
-                raise ValueError(
-                    '`wyckoff_letters` and `coords` must be the column name when `data` is set')
+                raise ValueError('`wyckoff_letters` and `coords` must be the column name when `data` is set')
 
             if elements is not None and isinstance(elements, str):
                 wy_and_coord = [a for _, a in data[[wyckoff_letters, coords, elements]].iterrows()]
             else:
                 wy_and_coord = [a for _, a in data[[wyckoff_letters, coords]].iterrows()]
         else:
-            if isinstance(wyckoff_letters, str) or isinstance(coords, str) or isinstance(
-                    elements, str):
+            if isinstance(wyckoff_letters, str) or isinstance(coords, str) or isinstance(elements, str):
                 raise ValueError(
-                    'found `wyckoff_letters`, `coords`, and `elements` as column name but `data` is not given'
-                )
+                    'found `wyckoff_letters`, `coords`, and `elements` as column name but `data` is not given')
 
             if elements is None:
                 if not len(wyckoff_letters) == len(coords):
@@ -131,17 +129,14 @@ class WyckoffPositionConverter():
                 wy_and_coord = list(zip(wyckoff_letters, coords))
             else:
                 if not len(wyckoff_letters) == len(coords) == len(elements):
-                    raise ValueError(
-                        '`wyckoff_letters`, `coords`, and `elements` have different lengths')
+                    raise ValueError('`wyckoff_letters`, `coords`, and `elements` have different lengths')
                 wy_and_coord = list(zip(wyckoff_letters, coords, elements))
 
         if len(wy_and_coord[0]) == 2:
             return [(wy, self._inner(wy, b)) for wy, b in wy_and_coord]
         if len(wy_and_coord[0]) == 3:
             return [(f'{elem}:{wy}', self._inner(wy, b)) for wy, b, elem in wy_and_coord]
-        raise ValueError(
-            '`wy_and_coord` must be a list of (wyckoff_letter, coord) or (wyckoff_letter, coord, element)'
-        )
+        raise ValueError('`wy_and_coord` must be a list of (wyckoff_letter, coord) or (wyckoff_letter, coord, element)')
 
 
 def build_structure(structure_data: dict):
@@ -199,45 +194,9 @@ def get_equivalent_coords(structure: Structure, *, mapper: Callable[[str, str, i
         row['multiplicity'] = int(wy_symbol[:-1])
         row['wyckoff_letter'] = wy_symbol[-1]
         if mapper is not None:
-            row['target_element'] = mapper(site.species_string, row['wyckoff_letter'],
-                                           row['multiplicity'])
+            row['target_element'] = mapper(site.species_string, row['wyckoff_letter'], row['multiplicity'])
         row['coordinate'] = list(site.frac_coords)
 
         return row
 
-    return pd.DataFrame(
-        [_inner(i, sites, mapper=mapper) for i, sites in enumerate(struct.equivalent_sites)])
-
-
-def structure_dissimilarity(anchor_structure: Structure,
-                            other_structures: List[Structure],
-                            *,
-                            verbose: int = 1,
-                            n_jobs: int = 1):
-    """Calculate dissimilarity between anchor and other structures.
-
-    Parameters
-    ----------
-    anchor_structure:
-        Anchor structure
-    other_structures:
-        Structures will be used to calculate the dissimilarity against the anchor structure.
-    verbose:
-        Verbose output when performing parallel calculation, by default 1
-    n_jobs:
-        Specify the number of cores for parallel calculation, by default 1
-
-    Returns
-    -------
-    list
-        List of dissimilarities.
-    """
-    # Calculate structure fingerprints.
-    ssf = SiteStatsFingerprint(CrystalNNFingerprint.from_preset('ops',
-                                                                distance_cutoffs=None,
-                                                                x_diff_weight=0),
-                               stats=('mean', 'std_dev', 'minimum', 'maximum'))
-    v_anchor = np.array(ssf.featurize(anchor_structure))
-    tmp = Parallel(n_jobs=n_jobs,
-                   verbose=verbose)(delayed(ssf.featurize)(s) for s in other_structures)
-    return [np.linalg.norm(np.array(s) - v_anchor) for s in tmp]
+    return pd.DataFrame([_inner(i, sites, mapper=mapper) for i, sites in enumerate(struct.equivalent_sites)])

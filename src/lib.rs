@@ -24,7 +24,7 @@ use crate::particle_gen::ParticleGenerator;
 use crate::wyckoff_cfg_gen::WyckoffCfgGenerator;
 
 #[pymodule]
-fn crystallus(py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn core(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // register classes
     m.add_class::<ParticleGenerator>()?;
     m.add_class::<CrystalGenerator>()?;

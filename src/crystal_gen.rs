@@ -25,7 +25,7 @@ use libcrystal::{
     Float,
 };
 
-#[pyclass(module = "crystallus")]
+#[pyclass(module = "core")]
 #[pyo3(
     text_signature = "(spacegroup_num, volume_of_cell, variance_of_volume, *, min_distance_tolerance, angle_range, angle_tolerance, max_recurrent, n_jobs)"
 )]

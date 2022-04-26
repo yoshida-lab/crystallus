@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-from .crystallus import CrystalGenerator as _CG
 from copy import deepcopy
-from typing import Tuple, Dict, List, Union
+from typing import Dict, List, Tuple, Union
+
+import numpy as np
+
+from .core import CrystalGenerator as _CG
 
 __all__ = ["CrystalGenerator"]
 
@@ -97,6 +99,7 @@ class CrystalGenerator(object):
         else:
             self._lattice = lattice
 
+        self._verbose = verbose
         self._volume_of_cell = volume_of_cell
         self._variance_of_volume = variance_of_volume
         self._angle_range = angle_range
@@ -163,6 +166,10 @@ class CrystalGenerator(object):
     @property
     def spacegroup_num(self):
         return self._cg.spacegroup_num
+
+    @property
+    def verbose(self):
+        return self._verbose
 
     @property
     def n_jobs(self):

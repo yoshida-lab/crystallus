@@ -8,26 +8,7 @@ publish = false
 version = '0.3.0-rc2'
 
 [package.metadata.maturin]
-classifier = [
-  'Development Status :: 4 - Beta',
-  'Intended Audience :: Science/Research',
-  'License :: OSI Approved :: BSD License',
-  'Natural Language :: English',
-  'Operating System :: Microsoft :: Windows',
-  'Operating System :: MacOS',
-  'Operating System :: Unix',
-  'Programming Language :: Python :: 3.8',
-  'Programming Language :: Python :: 3.9',
-  'Programming Language :: Python :: 3.10',
-]
-maintainer = 'tsumina <liu.chang.1865@gmail.com>'
-requires-dist = [
-  'peewee>=3.13.0',
-  'pandas>=1.0.0',
-  'pymatgen>=2020.9.14',
-  'matminer',
-]
-requires-python = '>=3.8'
+name = "crystallus.core"
 
 [workspace]
 members = ['libcrystal']
@@ -43,12 +24,11 @@ either = "1.6.1"
 
 [dependencies.pyo3]
 version = "0.16.2"
+features = ["extension-module"]
 
 [dependencies.libcrystal]
 features = ["openblas"]
 path = 'libcrystal'
-version = '^0.3.0'
 
-[features]
-default = ['extension-module']
-extension-module = ['pyo3/extension-module']
+# [build-dependencies]
+# pyo3-build-config = "^0.16.4"
