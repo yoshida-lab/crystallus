@@ -30,8 +30,8 @@ jobs:
 
       - name: Install OpenBLAS on Linux
         run: |
-          apt update
-          apt install -y libopenblas-dev gfortran
+          sudo apt update
+          sudo apt install -y libopenblas-dev gfortran
         if: ${{ contains(matrix.os, 'ubuntu') }}
 
       - name: Install OpenBLAS on OSX
