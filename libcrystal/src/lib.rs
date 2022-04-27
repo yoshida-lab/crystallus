@@ -14,6 +14,7 @@
 
 #[macro_use]
 extern crate lazy_static;
+extern crate blas_src;
 
 mod generator;
 mod structure;

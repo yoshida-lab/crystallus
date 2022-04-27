@@ -27,7 +27,7 @@ version = "0.16.2"
 features = ["extension-module"]
 
 [dependencies.libcrystal]
-features = ["openblas"]
+features = ["openblas-static"]
 path = 'libcrystal'
 
 # [build-dependencies]

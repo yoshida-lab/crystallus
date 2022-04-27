@@ -15,28 +15,50 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
       - name: Install Python ${{ matrix.python-version }}
         uses: conda-incubator/setup-miniconda@v2
         with:
+          python-version: ${{ matrix.python-version }}
+          mamba-version: "*"
+          channels: conda-forge,defaults
+          channel-priority: true
+          environment-file: .github/ci_environment.yml
           auto-update-conda: true
           auto-activate-base: false
           activate-environment: test
-          environment-file: env/test_environment.yml
-          python-version: ${{ matrix.python-version }}
+
+      - name: Install OpenBLAS on Linux
+        run: |
+          apt update
+          apt install -y libopenblas-dev gfortran
+        if: ${{ contains(matrix.os, 'ubuntu') }}
+
+      - name: Install OpenBLAS on OSX
+        run: |
+          brew install openblas
+        if: ${{ contains(matrix.os, 'macos') }}
+
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           default: true
+
       - name: Test libcrystal
         run: |
-          cargo test --package=libcrystal --no-default-features
+          cargo test --package=libcrystal --features=openblas
+
       - name: Test python side
         shell: bash -l {0}
         run: |
+          maturin develop && pytest --benchmark-skip
+
+      - name: Build wheel
+        shell: bash -l {0}
+        run: |
           maturin build -i $(which python) --release --no-sdist --strip
-          pip install -U target/wheels/crystallus-*.whl
-          pytest --benchmark-skip
+
       - name: Persist python wheel
         uses: actions/upload-artifact@v1
         if: always()
