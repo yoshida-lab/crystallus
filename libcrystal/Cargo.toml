@@ -47,7 +47,6 @@ ndarray = {version = "^0.15.4", features = ['rayon', 'blas', 'approx-0_5']}
 branch = "master"
 default-features = false
 git = "https://github.com/TsumiNa/ndarray-linalg.git"
-# features = ['openblas-static']
 
 # features
 [features]
@@ -55,10 +54,10 @@ git = "https://github.com/TsumiNa/ndarray-linalg.git"
 f32 = []
 
 # enable blas usage in ndarray
-intel-mkl = ['ndarray-linalg/intel-mkl-system', 'blas-src/intel-mkl']
+mkl = ['ndarray-linalg/intel-mkl-system', 'blas-src/intel-mkl']
 netlib = ['ndarray-linalg/netlib-system', 'blas-src/netlib']
 openblas = ['ndarray-linalg/openblas-system', 'blas-src/openblas']
 
-intel-mkl-static = ['ndarray-linalg/intel-mkl-static', 'blas-src/intel-mkl']
+mkl-static = ['ndarray-linalg/intel-mkl-static', 'blas-src/intel-mkl']
 netlib-static = ['ndarray-linalg/netlib-static', 'blas-src/netlib']
 openblas-static = ['ndarray-linalg/openblas-static', 'blas-src/openblas']

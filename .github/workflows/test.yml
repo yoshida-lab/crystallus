@@ -44,10 +44,11 @@ jobs:
         with:
           toolchain: stable
           default: true
-
       - name: Test libcrystal
-        run: |
-          cargo test --package=libcrystal --features=openblas
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --package=libcrystal --features=openblas
 
       - name: Test python side
         shell: bash -l {0}

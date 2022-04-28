@@ -27,8 +27,11 @@ version = "0.16.2"
 features = ["extension-module"]
 
 [dependencies.libcrystal]
-features = ["openblas-static"]
 path = 'libcrystal'
 
-# [build-dependencies]
-# pyo3-build-config = "^0.16.4"
+[features]
+default = ['openblas']
+
+mkl = ["libcrystal/mkl"]
+openblas = ["libcrystal/openblas"]
+netlib = ["libcrystal/netlib"]
