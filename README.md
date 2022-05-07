@@ -16,8 +16,8 @@ Suppose we will use the Python 3.8 and the latest stable Rust on Linux.
 1. install libopenblas-dev and gfortran onto your Linux system
 
     ```bash
-    sudo apt update
-    sudo apt install -y libopenblas-dev gfortran
+    $> sudo apt update
+    $> sudo apt install -y libopenblas-dev gfortran
     ```
 
 2. install dev-python
