@@ -22,30 +22,33 @@ use std::collections::HashMap;
 
 use libcrystal::{Float, WyckoffCfgGenerator as wyckoff_cfg_gen};
 
-#[pyclass(module = "crystallus")]
+#[pyclass(module = "core")]
 #[pyo3(text_signature = "(max_recurrent, n_jobs, **composition)")]
 pub struct WyckoffCfgGenerator {
     composition: BTreeMap<String, Float>,
     priority: HashMap<usize, HashMap<String, Float>>,
+
+    #[pyo3(get, set)]
+    n_jobs: i16,
+    #[pyo3(get, set)]
     max_recurrent: u16,
-    _n_jobs: i16,
 }
 
 #[pymethods]
 impl WyckoffCfgGenerator {
     #[new]
     #[args(
+        composition,
         "*",
         max_recurrent = "1_000",
         n_jobs = "-1",
-        priority = "None",
-        composition = "**"
+        priority = "None"
     )]
     fn new(
+        composition: &PyDict,
         max_recurrent: Option<u16>,
         n_jobs: Option<i16>,
         priority: Option<&PyDict>,
-        composition: Option<&PyDict>,
     ) -> PyResult<Self> {
         // convert Option<T: FromPyObject> -> Option<D>
         // if T.extract() return Err(e), pass this panic to python side
@@ -53,39 +56,17 @@ impl WyckoffCfgGenerator {
             Some(t) => t.extract()?,
             _ => HashMap::new(),
         };
-        let composition = composition.clone();
 
-        match composition {
-            Some(cfg) => {
-                let composition: BTreeMap<String, Float> = cfg.extract()?;
-                Ok(WyckoffCfgGenerator {
-                    max_recurrent: max_recurrent.unwrap_or(1000),
-                    priority,
-                    composition,
-                    _n_jobs: n_jobs.unwrap_or(-1),
-                })
-            }
-            _ => Err(PyValueError::new_err("no configurations for generation")),
-        }
+        let composition: BTreeMap<String, Float> = composition.extract()?;
+        Ok(WyckoffCfgGenerator {
+            max_recurrent: max_recurrent.unwrap_or(1000),
+            priority,
+            composition,
+            n_jobs: n_jobs.unwrap_or(-1),
+        })
     }
 
-    #[getter(max_recurrent)]
-    fn max_recurrent(&self) -> PyResult<u16> {
-        Ok(self.max_recurrent)
-    }
-
-    #[getter(n_jobs)]
-    fn n_jobs(&self) -> PyResult<i16> {
-        Ok(self._n_jobs)
-    }
-
-    #[setter(n_jobs)]
-    fn set_n_jobs(&mut self, n: i16) -> PyResult<()> {
-        self._n_jobs = n;
-        Ok(())
-    }
-
-    #[text_signature = "($self, spacegroup_num)"]
+    #[pyo3(text_signature = "($self, spacegroup_num)")]
     fn gen_one(&self, py: Python<'_>, spacegroup_num: usize) -> PyResult<PyObject> {
         let priority = match self.priority.get(&spacegroup_num) {
             Some(h) => Some(h.clone()),
@@ -117,8 +98,8 @@ impl WyckoffCfgGenerator {
             }
         };
         // parallel using rayon
-        if self._n_jobs > 0 {
-            std::env::set_var("RAYON_NUM_THREADS", self._n_jobs.to_string());
+        if self.n_jobs > 0 {
+            std::env::set_var("RAYON_NUM_THREADS", self.n_jobs.to_string());
         }
 
         match spacegroup_num.len() {

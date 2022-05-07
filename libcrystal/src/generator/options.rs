@@ -13,20 +13,20 @@
 // limitations under the License.
 
 use crate::Float;
-use ndarray::Array2;
-use std::{error, fmt};
 
 #[derive(Clone, Debug)]
-pub struct RandomGeneratorOption {
+pub struct BaseGeneratorOption {
+    pub variance_of_volume: Float,
     pub angle_range: (Float, Float),
     pub angle_tolerance: Float,
     pub max_attempts_number: u16,
     pub verbose: bool,
 }
 
-impl Default for RandomGeneratorOption {
+impl Default for BaseGeneratorOption {
     fn default() -> Self {
         Self {
+            variance_of_volume: 10.,
             angle_range: (30., 150.),
             angle_tolerance: 20.,
             max_attempts_number: 5_000,
@@ -36,54 +36,24 @@ impl Default for RandomGeneratorOption {
 }
 
 #[derive(Clone, Debug)]
-pub struct TemplateBaseGeneratorOption {
-    pub angle_range: (Float, Float),
-    pub angle_tolerance: Float,
+pub struct EmpiricalGeneratorOption {
+    pub base_option: BaseGeneratorOption,
     pub lattice: Vec<Float>,
     pub empirical_coords: Vec<(String, Vec<Float>)>,
     pub empirical_coords_variance: Float,
     pub empirical_coords_sampling_rate: Float,
     pub empirical_coords_loose_sampling: bool,
-    pub max_attempts_number: u16,
-    pub verbose: bool,
 }
 
-impl Default for TemplateBaseGeneratorOption {
+impl Default for EmpiricalGeneratorOption {
     fn default() -> Self {
         Self {
-            angle_range: (30., 150.),
-            angle_tolerance: 20.,
+            base_option: BaseGeneratorOption::default(),
             lattice: vec![0.; 9],
             empirical_coords: Vec::new(),
             empirical_coords_variance: 0.01,
             empirical_coords_sampling_rate: 1.,
             empirical_coords_loose_sampling: true,
-            max_attempts_number: 5_000,
-            verbose: false,
         }
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct CrystalGeneratorError(pub String);
-
-impl fmt::Display for CrystalGeneratorError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(f, "crystal generator error: `{}`", self.0)
-    }
-}
-
-impl error::Error for CrystalGeneratorError {}
-
-pub type LatticeFn =
-    Box<dyn Fn() -> Result<(Array2<Float>, Float), CrystalGeneratorError> + Send + Sync>;
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Crystal {
-    pub spacegroup_num: usize,
-    pub volume: Float,
-    pub lattice: Array2<Float>,
-    pub particles: Array2<Float>,
-    pub elements: Vec<String>,
-    pub wyckoff_letters: Vec<String>,
 }

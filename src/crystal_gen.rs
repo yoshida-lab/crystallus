@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use either::{Either, Left, Right};
+use libcrystal::Generator;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyTuple};
@@ -19,22 +21,32 @@ use rayon::prelude::*;
 use std::collections::BTreeMap;
 
 use libcrystal::{
-    Crystal as crystal_, Float, RandomGenerator as crystal_gen, TemplateBaseGeneratorOption,
+    BaseGenerator, BaseGeneratorOption, Crystal, EmpiricalGenerator, EmpiricalGeneratorOption,
+    Float,
 };
 
-#[pyclass(module = "crystallus")]
+#[pyclass(module = "core")]
 #[pyo3(
-    text_signature = "(spacegroup_num, estimated_volume, estimated_variance, *, min_distance_tolerance, angle_range, angle_tolerance, max_recurrent, n_jobs)"
+    text_signature = "(spacegroup_num, volume_of_cell, variance_of_volume, *, min_distance_tolerance, angle_range, angle_tolerance, max_recurrent, n_jobs)"
 )]
 pub struct CrystalGenerator {
-    _crystal_gen: crystal_gen,
-    _n_jobs: i16,
+    _crystal_gen: Either<BaseGenerator, EmpiricalGenerator>,
+
+    #[pyo3(get, set)]
+    n_jobs: i16,
+    #[pyo3(get)]
+    spacegroup_num: usize,
+    #[pyo3(get)]
+    max_attempts_number: u16,
 }
 
 #[pymethods]
 impl CrystalGenerator {
     #[new]
     #[args(
+        spacegroup_num,
+        volume_of_cell,
+        variance_of_volume,
         "*",
         angle_range = "(30., 150.)",
         angle_tolerance = "20.",
@@ -49,8 +61,8 @@ impl CrystalGenerator {
     )]
     fn new(
         spacegroup_num: usize,
-        estimated_volume: Float,
-        estimated_variance: Float,
+        volume_of_cell: Float,
+        variance_of_volume: Float,
         angle_range: (Float, Float),
         angle_tolerance: Float,
         lattice: Option<&PyTuple>,
@@ -62,164 +74,168 @@ impl CrystalGenerator {
         n_jobs: i16,
         verbose: bool,
     ) -> PyResult<Self> {
-        // convert Option<T: FromPyObject> -> Option<D>
-        // if T.extract() return Err(e), pass this panic to python side
-        let empirical_coords: Vec<(String, Vec<Float>)> = match empirical_coords {
-            Some(t) => t.extract()?,
-            _ => Vec::new(),
-        };
-        let lattice: Vec<Float> = match lattice {
-            Some(t) => {
-                let ret: Vec<Float> = t.extract()?;
-                if ret.len() != 9 {
-                    return Err(PyValueError::new_err("`lattice` is illegal"));
+        if lattice.is_none() && empirical_coords.is_none() {
+            let _crystal_gen = BaseGenerator::from_spacegroup_num(
+                spacegroup_num,
+                volume_of_cell,
+                Some(BaseGeneratorOption {
+                    variance_of_volume,
+                    angle_range,
+                    angle_tolerance,
+                    max_attempts_number,
+                    verbose,
+                }),
+            );
+            match _crystal_gen {
+                Err(e) => Err(PyValueError::new_err(e.to_string())),
+                Ok(w) => {
+                    return Ok(CrystalGenerator {
+                        _crystal_gen: Left(w),
+                        n_jobs,
+                        spacegroup_num,
+                        max_attempts_number,
+                    })
                 }
-                ret
             }
-            _ => vec![0.; 9],
-        };
-        let _crystal_gen = crystal_gen::from_spacegroup_num(
-            spacegroup_num,
-            estimated_volume,
-            estimated_variance,
-            TemplateBaseGeneratorOption {
-                angle_range,
-                angle_tolerance,
-                lattice,
-                empirical_coords,
-                empirical_coords_variance,
-                empirical_coords_loose_sampling,
-                empirical_coords_sampling_rate,
-                max_attempts_number,
-                verbose,
-            },
-        );
-        match _crystal_gen {
-            Err(e) => Err(PyValueError::new_err(e.to_string())),
-            Ok(w) => {
-                return Ok(CrystalGenerator {
-                    _crystal_gen: w,
-                    _n_jobs: n_jobs,
-                })
+        } else {
+            // convert Option<T: FromPyObject> -> Option<D>
+            // if T.extract() return Err(e), pass this panic to python side
+            let empirical_coords: Vec<(String, Vec<Float>)> = match empirical_coords {
+                Some(t) => t.extract()?,
+                _ => Vec::new(),
+            };
+            let lattice: Vec<Float> = match lattice {
+                Some(t) => {
+                    let ret: Vec<Float> = t.extract()?;
+                    if ret.len() != 9 {
+                        return Err(PyValueError::new_err("`lattice` is illegal"));
+                    }
+                    ret
+                }
+                _ => vec![0.; 9],
+            };
+            let _crystal_gen = EmpiricalGenerator::from_spacegroup_num(
+                spacegroup_num,
+                volume_of_cell,
+                Some(EmpiricalGeneratorOption {
+                    base_option: BaseGeneratorOption {
+                        variance_of_volume,
+                        angle_range,
+                        angle_tolerance,
+                        max_attempts_number,
+                        verbose,
+                    },
+                    lattice,
+                    empirical_coords,
+                    empirical_coords_variance,
+                    empirical_coords_loose_sampling,
+                    empirical_coords_sampling_rate,
+                }),
+            );
+            match _crystal_gen {
+                Err(e) => Err(PyValueError::new_err(e.to_string())),
+                Ok(w) => {
+                    return Ok(CrystalGenerator {
+                        _crystal_gen: Right(w),
+                        n_jobs,
+                        spacegroup_num,
+                        max_attempts_number,
+                    })
+                }
             }
         }
     }
 
-    #[getter(spacegroup_num)]
-    fn spacegroup_num(&self) -> PyResult<usize> {
-        Ok(self._crystal_gen.spacegroup_num)
-    }
-
-    #[getter(max_attempts_number)]
-    fn max_attempts_number(&self) -> PyResult<u16> {
-        Ok(self._crystal_gen.max_attempts_number)
-    }
-
-    #[getter(n_jobs)]
-    fn n_jobs(&self) -> PyResult<i16> {
-        Ok(self._n_jobs)
-    }
-
-    #[setter(n_jobs)]
-    fn set_n_jobs(&mut self, n: i16) -> PyResult<()> {
-        self._n_jobs = n;
-        Ok(())
-    }
-
-    #[getter(verbose)]
-    fn verbose(&self) -> PyResult<bool> {
-        Ok(self._crystal_gen.verbose)
-    }
-
-    #[setter(verbose)]
-    fn set_verbose(&mut self, verbose: bool) -> PyResult<()> {
-        self._crystal_gen.verbose = verbose;
-        Ok(())
-    }
-    #[text_signature = "($self, check_distance, atomic_distance_tolerance, /, **cfg)"]
-    #[args(check_distance = true, atomic_distance_tolerance = "0.1", cfg = "**")]
+    #[pyo3(text_signature = "($self, wyckoff_cfg, *, check_distance, distance_scale_factor)")]
+    #[args(wyckoff_cfg, "*", check_distance = true, distance_scale_factor = "0.1")]
     fn gen_one(
         &self,
         py: Python<'_>,
+        wyckoff_cfg: &PyDict,
         check_distance: bool,
         distance_scale_factor: Float,
-        cfg: Option<&PyDict>,
     ) -> PyResult<PyObject> {
-        match cfg {
-            Some(cfg) => {
-                let mut cfg: BTreeMap<String, Vec<String>> = cfg.extract()?;
-                let mut elements: Vec<String> = Vec::new();
-                let mut wyckoff_letters: Vec<String> = Vec::new();
-                for (elem, letter) in cfg.iter_mut() {
-                    elements.append(&mut vec![(*elem).clone(); letter.len()]);
-                    wyckoff_letters.append(letter);
-                }
-                let cry = self._crystal_gen.gen(
-                    &elements,
-                    &wyckoff_letters,
-                    Some(check_distance),
-                    Some(distance_scale_factor),
-                );
+        let mut cfg: BTreeMap<String, Vec<String>> = wyckoff_cfg.extract()?;
+        let mut elements: Vec<String> = Vec::new();
+        let mut wyckoff_letters: Vec<String> = Vec::new();
+        for (elem, letter) in cfg.iter_mut() {
+            elements.append(&mut vec![(*elem).clone(); letter.len()]);
+            wyckoff_letters.append(letter);
+        }
 
-                match cry {
-                    Err(e) => Err(PyValueError::new_err(e.to_string())),
-                    Ok(w) => {
-                        let dict = PyDict::new(py);
-                        dict.set_item("spacegroup_num", w.spacegroup_num)?;
-                        dict.set_item("volume", w.volume)?;
-                        dict.set_item(
-                            "lattice",
-                            w.lattice
-                                .into_raw_vec()
-                                .chunks(3)
-                                .collect::<Vec<&[Float]>>(),
-                        )?;
-                        dict.set_item("species", w.elements)?;
-                        dict.set_item("wyckoff_letters", w.wyckoff_letters)?;
-                        dict.set_item(
-                            "coords",
-                            w.particles
-                                .into_raw_vec()
-                                .chunks(3)
-                                .collect::<Vec<&[Float]>>(),
-                        )?;
+        let cry = match &self._crystal_gen {
+            Left(l) => l.gen(
+                &elements,
+                &wyckoff_letters,
+                Some(check_distance),
+                Some(distance_scale_factor),
+            ),
+            Right(r) => r.gen(
+                &elements,
+                &wyckoff_letters,
+                Some(check_distance),
+                Some(distance_scale_factor),
+            ),
+        };
 
-                        Ok(dict.into_py(py))
-                    }
-                }
-            }
-            None => {
-                return Err(PyValueError::new_err("no configurations for generation"));
+        match cry {
+            Err(e) => Err(PyValueError::new_err(e.to_string())),
+            Ok(w) => {
+                let dict = PyDict::new(py);
+                dict.set_item("spacegroup_num", w.spacegroup_num)?;
+                dict.set_item("volume", w.volume)?;
+                dict.set_item(
+                    "lattice",
+                    w.lattice
+                        .into_raw_vec()
+                        .chunks(3)
+                        .collect::<Vec<&[Float]>>(),
+                )?;
+                dict.set_item("species", w.elements)?;
+                dict.set_item("wyckoff_letters", w.wyckoff_letters)?;
+                dict.set_item(
+                    "coords",
+                    w.particles
+                        .into_raw_vec()
+                        .chunks(3)
+                        .collect::<Vec<&[Float]>>(),
+                )?;
+
+                Ok(dict.into_py(py))
             }
         }
     }
 
-    #[text_signature = "($self, expect_size, max_attempts, check_distance, distance_scale_factor, /, *cfgs)"]
+    #[pyo3(
+        text_signature = "($self, expect_size, wyckoff_cfgs, *, max_attempts, check_distance, distance_scale_factor)"
+    )]
     #[args(
+        expect_size,
+        wyckoff_cfgs,
+        "*",
         max_attempts = "None",
         check_distance = true,
-        distance_scale_factor = "0.1",
-        cfgs = "*"
+        distance_scale_factor = "0.1"
     )]
     fn gen_many(
         &self,
         py: Python<'_>,
         expect_size: usize,
+        wyckoff_cfgs: &PyTuple,
         max_attempts: Option<usize>,
         check_distance: bool,
         distance_scale_factor: Float,
-        cfgs: &PyTuple,
     ) -> PyResult<PyObject> {
         let mut cfgs: Vec<BTreeMap<String, Vec<String>>> =
-            match cfgs.extract() {
+            match wyckoff_cfgs.extract() {
                 Ok(m) => m,
                 Err(_) => return Err(PyValueError::new_err(
                     "can not converting `cfg` into dict, make sure the `cfgs` are tuple of dicts",
                 )),
             };
         // parallel using rayon
-        if self._n_jobs > 0 {
-            std::env::set_var("RAYON_NUM_THREADS", self._n_jobs.to_string());
+        if self.n_jobs > 0 {
+            std::env::set_var("RAYON_NUM_THREADS", self.n_jobs.to_string());
         }
 
         let max_attempts = max_attempts.unwrap_or(expect_size);
@@ -228,7 +244,7 @@ impl CrystalGenerator {
                 "`max_attempts` can not be smaller than `expect_size`",
             ));
         }
-        let mut ret: Vec<crystal_> = Vec::new();
+        let mut ret: Vec<Crystal> = Vec::new();
         match cfgs.len() {
             0 => {
                 return Ok(PyTuple::new(py, Vec::<PyDict>::new()).into_py(py));
@@ -247,16 +263,22 @@ impl CrystalGenerator {
                     ret.append(&mut py.allow_threads(|| {
                         (0..expect_size)
                             .into_par_iter()
-                            .map(|_| {
-                                self._crystal_gen.gen(
+                            .map(|_| match &self._crystal_gen {
+                                Left(l) => l.gen(
                                     &elements,
                                     &wyckoff_letters,
                                     Some(check_distance),
                                     Some(distance_scale_factor),
-                                )
+                                ),
+                                Right(r) => r.gen(
+                                    &elements,
+                                    &wyckoff_letters,
+                                    Some(check_distance),
+                                    Some(distance_scale_factor),
+                                ),
                             })
                             .filter_map(Result::ok)
-                            .collect::<Vec<crystal_>>()
+                            .collect::<Vec<Crystal>>()
                     }));
                     counter += expect_size;
                 }
@@ -277,16 +299,22 @@ impl CrystalGenerator {
                         ret.append(&mut py.allow_threads(|| {
                             (0..expect_size)
                                 .into_par_iter()
-                                .map(|_| {
-                                    self._crystal_gen.gen(
+                                .map(|_| match &self._crystal_gen {
+                                    Left(l) => l.gen(
                                         &elements,
                                         &wyckoff_letters,
                                         Some(check_distance),
                                         Some(distance_scale_factor),
-                                    )
+                                    ),
+                                    Right(r) => r.gen(
+                                        &elements,
+                                        &wyckoff_letters,
+                                        Some(check_distance),
+                                        Some(distance_scale_factor),
+                                    ),
                                 })
                                 .filter_map(Result::ok)
-                                .collect::<Vec<crystal_>>()
+                                .collect::<Vec<Crystal>>()
                         }));
                         counter += expect_size;
                     }

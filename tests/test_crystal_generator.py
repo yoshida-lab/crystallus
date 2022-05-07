@@ -1,11 +1,11 @@
 # Copyright 2021 TsumiNa
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,13 +16,13 @@ import pytest
 import numpy as np
 import numpy.testing as npt
 
-from pymatgen import Lattice
+from pymatgen.core import Lattice
 from crystallus import CrystalGenerator
 
 
 def test_crystal_gen_one():
     cg = CrystalGenerator(207, 1000, 20)
-    structure = cg.gen_one(C=('a', 'b'), O=('d'))
+    structure = cg.gen_one(dict(C=('a', 'b'), O=('d')))
 
     assert set(structure.keys()) == {
         "lattice",
@@ -38,8 +38,8 @@ def test_crystal_gen_one():
     assert structure['spacegroup_num'] == 207
     assert structure['species'] == ['C', 'C', 'O', 'O', 'O']
     assert structure['wyckoff_letters'] == ['a', 'b', 'd', 'd', 'd']
-    assert structure['coords'] == [[0., 0., 0.], [1 / 2, 1 / 2, 1 / 2], [1 / 2, 0., 0.],
-                                   [0., 1 / 2, 0.], [0., 0., 1 / 2]]
+    assert structure['coords'] == [[0., 0., 0.], [1 / 2, 1 / 2, 1 / 2], [1 / 2, 0., 0.], [0., 1 / 2, 0.],
+                                   [0., 0., 1 / 2]]
 
 
 def test_crystal_gen_one_with_lattice():
@@ -49,7 +49,7 @@ def test_crystal_gen_one_with_lattice():
         [0.00000000e+00, 0.00000000e+00, 1.07431550e+01],
     ])
     cg = CrystalGenerator(207, 1000, 0, lattice=lattice.matrix)
-    structure = cg.gen_one(C=('a', 'b'), O=('d'))
+    structure = cg.gen_one(dict(C=('a', 'b'), O=('d')))
 
     assert set(structure.keys()) == {
         "lattice",
@@ -91,8 +91,8 @@ def test_crystal_gen_one_with_template():
     -------------------------------------------------------------------------
     """
     template = [('c', [0.2, 0., 0.0]), ('e', [0.4, 0., 0.0])]
-    cg = CrystalGenerator(167, 1000, 10, empirical_coords=template, empirical_coords_variance=0)
-    structure = cg.gen_one(C=('c'), O=('e'))
+    cg = CrystalGenerator(167, 1000, 10, angle_range=(40, 50), empirical_coords=template, empirical_coords_variance=0)
+    structure = cg.gen_one(dict(Li=('c'), P=('e')))
 
     assert structure['wyckoff_letters'] == ['c'] * 4 + ['e'] * 6
     npt.assert_almost_equal(
@@ -158,11 +158,7 @@ def test_crystal_gen_many_4():
 
 def test_crystal_gen_many_5():
     cg = CrystalGenerator(33, 1168, 15)
-    comp = {
-        'Ag': ['a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'],
-        'Ge': ['a'],
-        'S': ['a', 'a', 'a', 'a', 'a', 'a']
-    }
+    comp = {'Ag': ['a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'], 'Ge': ['a'], 'S': ['a', 'a', 'a', 'a', 'a', 'a']}
 
     # distance error
     structure = cg.gen_many(100, comp)

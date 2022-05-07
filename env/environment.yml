@@ -1,11 +1,7 @@
+channels:
+  - conda-forge
 dependencies:
-  - mkl
-  - mkl-service
   - numpy
-  - joblib
   - pandas
-  - pip
-  - pip:
-      - pymatgen
-      - matminer
-      - peewee>=3.13.0
+  - peewee>=3.13.0
+  - pymatgen

@@ -20,7 +20,7 @@ use rayon::prelude::*;
 
 use libcrystal::{Coord, Float, WyckoffPos as wy_pos};
 
-#[pyclass(module = "crystallus")]
+#[pyclass(module = "core")]
 pub struct ParticleGenerator {
     _wy_pos: wy_pos,
 }

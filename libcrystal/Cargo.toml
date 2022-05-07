@@ -1,19 +1,20 @@
 [package]
 authors = ['tsumina <liu.chang.1865@gmail.com>']
-edition = '2018'
+edition = '2021'
 license = 'Apache-2'
 name = 'libcrystal'
 repository = 'https://github.com/yoshida-lab/crystallus'
 version = '0.3.0'
 workspace = '..'
 
-[[bench]]
-name = 'wyckoff_gen_one'
-path = 'benches/bench_wyckoff_gen_one.rs'
+# benchmark only works on nightly builds
+# [[bench]]
+# name = 'wyckoff_gen_one'
+# path = 'benches/bench_wyckoff_gen_one.rs'
 
-[[bench]]
-name = 'wyckoff_gen_many'
-path = 'benches/bench_wyckoff_gen_many.rs'
+# [[bench]]
+# name = 'wyckoff_gen_many'
+# path = 'benches/bench_wyckoff_gen_many.rs'
 
 [lib]
 name = 'libcrystal'
@@ -21,46 +22,31 @@ name = 'libcrystal'
 [dependencies]
 lazy_static = '1.4.0'
 num-traits = '0.2.14'
-rand = '0.8.4'
+rand = '0.8.5'
 rand_distr = '0.4.3'
-rayon = '1.5.1'
+rayon = '1.5.2'
 regex = '1.5.4'
 serde_json = '1.0.75'
+ndarray = {version = "^0.15.4", features = ['rayon', 'blas']}
 
 [dependencies.blas-src]
-branch = 'master'
+branch = "master"
 default-features = false
-git = "https://github.com/yoshida-lab/blas-src"
-
-[dependencies.ndarray]
-features = ['rayon', 'blas']
-version = '0.15.4'
+git = "https://github.com/TsumiNa/blas-src.git"
 
 [dependencies.ndarray-linalg]
 branch = "master"
 default-features = false
-git = "https://github.com/rust-ndarray/ndarray-linalg"
-# version = '0.13.1'
+git = "https://github.com/TsumiNa/ndarray-linalg.git"
 
 [dev-dependencies]
-approx = '0.5.0'
-
-[dev-dependencies.ndarray]
-features = ['approx']
-version = '0.15.2'
-
-# dev dependencies
-[dev-dependencies.blas-src]
-branch = 'master'
-default-features = false
-features = ['openblas']
-git = "https://github.com/yoshida-lab/blas-src"
+approx = '^0.5.1'
+ndarray = {version = "^0.15.4", features = ['rayon', 'blas', 'approx-0_5']}
 
 [dev-dependencies.ndarray-linalg]
 branch = "master"
 default-features = false
-features = ['openblas-system']
-git = "https://github.com/rust-ndarray/ndarray-linalg"
+git = "https://github.com/TsumiNa/ndarray-linalg.git"
 
 # features
 [features]
@@ -68,10 +54,10 @@ git = "https://github.com/rust-ndarray/ndarray-linalg"
 f32 = []
 
 # enable blas usage in ndarray
-intel-mkl = ['ndarray-linalg/intel-mkl-system']
-netlib = ['ndarray-linalg/netlib-system']
-openblas = ['ndarray-linalg/openblas-system']
+mkl = ['ndarray-linalg/intel-mkl-system', 'blas-src/intel-mkl']
+netlib = ['ndarray-linalg/netlib-system', 'blas-src/netlib']
+openblas = ['ndarray-linalg/openblas-system', 'blas-src/openblas']
 
-intel-mkl-static = ['ndarray-linalg/intel-mkl-static']
-netlib-static = ['ndarray-linalg/netlib-static']
-openblas-static = ['ndarray-linalg/openblas-static']
+mkl-static = ['ndarray-linalg/intel-mkl-static', 'blas-src/intel-mkl']
+netlib-static = ['ndarray-linalg/netlib-static', 'blas-src/netlib']
+openblas-static = ['ndarray-linalg/openblas-static', 'blas-src/openblas']

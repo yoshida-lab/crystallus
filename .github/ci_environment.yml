@@ -1,0 +1,10 @@
+dependencies:
+  - numpy
+  - joblib
+  - pandas
+  - pytest
+  - pytest-benchmark
+  - maturin
+  - pymatgen
+  - matminer
+  - peewee>=3.13.0
