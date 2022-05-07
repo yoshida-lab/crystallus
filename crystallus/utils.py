@@ -20,60 +20,60 @@ __call__ = [
 ]
 
 
-class _Coordinate:
-    patten = re.compile(r'(?P<xyz>-?\d?[xyz])|(?P<cons_frac>\d\/\d?)|(?P<cons>\d)')
-
-    @classmethod
-    def _inner(cls, s):
-        if '-' in s:
-            coeff = -1
-        else:
-            coeff = 1
-        if '2' in s:
-            coeff *= 2
-
-        return coeff
-
-    def __call__(self, coordinates):
-        const = 0
-        x_coeff, y_coeff, z_coeff, const = 0, 0, 0, 0
-
-        for e in self.patten.findall(coordinates):
-
-            if e[0] != '':
-                s = e[0].lower()
-                if 'x' in s:
-                    x_coeff = self._inner(s)
-                    continue
-
-                if 'y' in s:
-                    y_coeff = self._inner(s)
-                    continue
-
-                if 'z' in s:
-                    z_coeff = self._inner(s)
-                    continue
-
-            if e[1] != '':
-                s = e[1].split('/')
-                const = float(s[0]) / float(s[1])
-                continue
-
-            if e[2] != '':
-                const = float(e[2])
-                continue
-
-        return x_coeff, y_coeff, z_coeff, const
-
-
 class WyckoffPositionConverter():
+
+    class _Coordinate:
+        patten = re.compile(r'(?P<xyz>-?\d?[xyz])|(?P<cons_frac>\d\/\d?)|(?P<cons>\d)')
+
+        @classmethod
+        def _inner(cls, s):
+            if '-' in s:
+                coeff = -1
+            else:
+                coeff = 1
+            if '2' in s:
+                coeff *= 2
+
+            return coeff
+
+        def __call__(self, coordinates):
+            const = 0
+            x_coeff, y_coeff, z_coeff, const = 0, 0, 0, 0
+
+            for e in self.patten.findall(coordinates):
+
+                if e[0] != '':
+                    s = e[0].lower()
+                    if 'x' in s:
+                        x_coeff = self._inner(s)
+                        continue
+
+                    if 'y' in s:
+                        y_coeff = self._inner(s)
+                        continue
+
+                    if 'z' in s:
+                        z_coeff = self._inner(s)
+                        continue
+
+                if e[1] != '':
+                    s = e[1].split('/')
+                    const = float(s[0]) / float(s[1])
+                    continue
+
+                if e[2] != '':
+                    const = float(e[2])
+                    continue
+
+            return x_coeff, y_coeff, z_coeff, const
+
     """Convert fraction coordinates into Wyckoff position formate. """
 
     class _Particle():
         patten = re.compile(r',\s*')
 
         def __init__(self):
-            self.Coordinate = _Coordinate()
+            self.Coordinate = WyckoffPositionConverter._Coordinate()
 
         def __call__(self, position):
             return [self.Coordinate(coord) for coord in self.patten.split(position)]
@@ -82,7 +82,7 @@ class WyckoffPositionConverter():
 
     def __init__(self, spacegroup_num: int):
         wys = SpaceGroupDB.get(SpaceGroupDB.spacegroup_num == spacegroup_num).wyckoffs
-        self.particle = self._Particle()
+        self.particle = WyckoffPositionConverter._Particle()
         self.wyckoff_pos = {wy.letter: self.patten.split(wy.positions)[0][1:-1] for wy in wys}
 
     def _inner(self, wy_letter, coord):

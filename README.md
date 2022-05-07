@@ -8,36 +8,43 @@ This package is heavily developed on rust to guarantee the performance and provi
 ## Installation
 
 To install this package, you have to prepare an environment which has python development toolchain and Rust compiler toolchain.
-We support Python 3.6, 3.7, and 3.8 on macOS and Linux (**windows is not supported**).
+We support Python 3.7, 3.8, and 3.9 on macOS and Linux (**windows is not tested, you should do it on your risks**).
 We highly recommend you to use [miniconda](https://docs.conda.io/en/latest/miniconda.html) and our preset conda env file (`env/environment.yml`) to build your python environment.
 
-1. install dev-python
+Suppose we will use the Python 3.8 and the latest stable Rust on Linux.
 
-    Suppose we will use Python 3.7 and Rust 1.46.0-nightly 2020-06-26.
+1. install libopenblas-dev and gfortran onto your Linux system
+
+    ```bash
+    sudo apt update
+    sudo apt install -y libopenblas-dev gfortran
+    ```
+
+2. install dev-python
+
     The following commands will check your conda installation. If everything is ok, then create a new environment named `crystallus` and install packages using `env/environment.yml` environment file.
 
     ```bash
     $> conda -V  # will return your conda version if conda installation is ok
-    $> conda create -n crystallus python=3.7  # create a new environment with python3.7 and name it *crystallus*.
+    $> conda create -n crystallus python=3.8  # create a new environment with python3.7 and name it *crystallus*.
     $> conda env update -n crystallus -f env/environment.yml  # install packages which are listed in `environment.yml` file.
     ```
 
     The environment's name can be anything you liked without space in the name string.
 
-2. install rust toolchain
+3. install rust toolchain
 
-    We use [pyo3](https://github.com/PyO3/pyo3) to provide you the python bindings.
-    Based on the official document of pyo3, you have to use nightly build Rust. The tested Rust version is 1.44.0-nightly 2020-06-26.
-    We will install the [rustup](https://www.rust-lang.org/tools/install) tools into our system and set the default rust compiler using the following commands.
+    Then let's follow the [official guidance](https://www.rust-lang.org/tools/install) to install the latest Rust toolchain. This should be done by typing the following commands.
 
     ```bash
-     $> rustup toolchain add nightly-2020-06-26
-     $> rustup default nightly-2020-06-26
+     $> curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+     $> rustup update
     ```
 
-3. compile and install crystallus
+4. compile and install crystallus
 
-    This is the last step. We will use [maturin](https://github.com/PyO3/maturin) to build our rust codes into the native dynamic library, and wrap it into a python module.
+    This is the last step.
+    We use [pyo3](https://github.com/PyO3/pyo3) to provide you the python bindings and use [maturin](https://github.com/PyO3/maturin) to build our rust codes into the native dynamic library.
 
     ```bash
      $> conda activate crystallus  # activate your python environment by name
@@ -51,6 +58,12 @@ We highly recommend you to use [miniconda](https://docs.conda.io/en/latest/minic
 
     ```bash
     $> pip install -U target/wheels/crystallus-*.whl
+    ```
+
+    if you just want to test the package quickly, please use [maturin develop](https://maturin.rs/tutorial.html#build-and-install-the-module-with-maturin-develop) command.
+
+    ```bash
+    $> maturin develop
     ```
 
 ## Usage

@@ -92,7 +92,7 @@ def test_crystal_gen_one_with_template():
     """
     template = [('c', [0.2, 0., 0.0]), ('e', [0.4, 0., 0.0])]
     cg = CrystalGenerator(167, 1000, 10, empirical_coords=template, empirical_coords_variance=0)
-    structure = cg.gen_one(C=('c'), O=('e'))
+    structure = cg.gen_one(Li=('c'), P=('e'))
 
     assert structure['wyckoff_letters'] == ['c'] * 4 + ['e'] * 6
     npt.assert_almost_equal(

@@ -38,17 +38,17 @@ pub struct WyckoffCfgGenerator {
 impl WyckoffCfgGenerator {
     #[new]
     #[args(
+        composition,
         "*",
         max_recurrent = "1_000",
         n_jobs = "-1",
-        priority = "None",
-        composition = "**"
+        priority = "None"
     )]
     fn new(
+        composition: &PyDict,
         max_recurrent: Option<u16>,
         n_jobs: Option<i16>,
         priority: Option<&PyDict>,
-        composition: Option<&PyDict>,
     ) -> PyResult<Self> {
         // convert Option<T: FromPyObject> -> Option<D>
         // if T.extract() return Err(e), pass this panic to python side
@@ -56,20 +56,14 @@ impl WyckoffCfgGenerator {
             Some(t) => t.extract()?,
             _ => HashMap::new(),
         };
-        let composition = composition.clone();
 
-        match composition {
-            Some(cfg) => {
-                let composition: BTreeMap<String, Float> = cfg.extract()?;
-                Ok(WyckoffCfgGenerator {
-                    max_recurrent: max_recurrent.unwrap_or(1000),
-                    priority,
-                    composition,
-                    n_jobs: n_jobs.unwrap_or(-1),
-                })
-            }
-            _ => Err(PyValueError::new_err("no configurations for generation")),
-        }
+        let composition: BTreeMap<String, Float> = composition.extract()?;
+        Ok(WyckoffCfgGenerator {
+            max_recurrent: max_recurrent.unwrap_or(1000),
+            priority,
+            composition,
+            n_jobs: n_jobs.unwrap_or(-1),
+        })
     }
 
     #[pyo3(text_signature = "($self, spacegroup_num)")]
