@@ -146,93 +146,88 @@ impl CrystalGenerator {
         }
     }
 
-    #[pyo3(text_signature = "($self, check_distance, atomic_distance_tolerance, /, **cfg)")]
-    #[args(check_distance = true, atomic_distance_tolerance = "0.1", cfg = "**")]
+    #[pyo3(text_signature = "($self, wyckoff_cfg, *, check_distance, distance_scale_factor)")]
+    #[args(wyckoff_cfg, "*", check_distance = true, distance_scale_factor = "0.1")]
     fn gen_one(
         &self,
         py: Python<'_>,
+        wyckoff_cfg: &PyDict,
         check_distance: bool,
         distance_scale_factor: Float,
-        cfg: Option<&PyDict>,
     ) -> PyResult<PyObject> {
-        match cfg {
-            Some(cfg) => {
-                let mut cfg: BTreeMap<String, Vec<String>> = cfg.extract()?;
-                let mut elements: Vec<String> = Vec::new();
-                let mut wyckoff_letters: Vec<String> = Vec::new();
-                for (elem, letter) in cfg.iter_mut() {
-                    elements.append(&mut vec![(*elem).clone(); letter.len()]);
-                    wyckoff_letters.append(letter);
-                }
+        let mut cfg: BTreeMap<String, Vec<String>> = wyckoff_cfg.extract()?;
+        let mut elements: Vec<String> = Vec::new();
+        let mut wyckoff_letters: Vec<String> = Vec::new();
+        for (elem, letter) in cfg.iter_mut() {
+            elements.append(&mut vec![(*elem).clone(); letter.len()]);
+            wyckoff_letters.append(letter);
+        }
 
-                let cry = match &self._crystal_gen {
-                    Left(l) => l.gen(
-                        &elements,
-                        &wyckoff_letters,
-                        Some(check_distance),
-                        Some(distance_scale_factor),
-                    ),
-                    Right(r) => r.gen(
-                        &elements,
-                        &wyckoff_letters,
-                        Some(check_distance),
-                        Some(distance_scale_factor),
-                    ),
-                };
+        let cry = match &self._crystal_gen {
+            Left(l) => l.gen(
+                &elements,
+                &wyckoff_letters,
+                Some(check_distance),
+                Some(distance_scale_factor),
+            ),
+            Right(r) => r.gen(
+                &elements,
+                &wyckoff_letters,
+                Some(check_distance),
+                Some(distance_scale_factor),
+            ),
+        };
 
-                match cry {
-                    Err(e) => Err(PyValueError::new_err(e.to_string())),
-                    Ok(w) => {
-                        let dict = PyDict::new(py);
-                        dict.set_item("spacegroup_num", w.spacegroup_num)?;
-                        dict.set_item("volume", w.volume)?;
-                        dict.set_item(
-                            "lattice",
-                            w.lattice
-                                .into_raw_vec()
-                                .chunks(3)
-                                .collect::<Vec<&[Float]>>(),
-                        )?;
-                        dict.set_item("species", w.elements)?;
-                        dict.set_item("wyckoff_letters", w.wyckoff_letters)?;
-                        dict.set_item(
-                            "coords",
-                            w.particles
-                                .into_raw_vec()
-                                .chunks(3)
-                                .collect::<Vec<&[Float]>>(),
-                        )?;
+        match cry {
+            Err(e) => Err(PyValueError::new_err(e.to_string())),
+            Ok(w) => {
+                let dict = PyDict::new(py);
+                dict.set_item("spacegroup_num", w.spacegroup_num)?;
+                dict.set_item("volume", w.volume)?;
+                dict.set_item(
+                    "lattice",
+                    w.lattice
+                        .into_raw_vec()
+                        .chunks(3)
+                        .collect::<Vec<&[Float]>>(),
+                )?;
+                dict.set_item("species", w.elements)?;
+                dict.set_item("wyckoff_letters", w.wyckoff_letters)?;
+                dict.set_item(
+                    "coords",
+                    w.particles
+                        .into_raw_vec()
+                        .chunks(3)
+                        .collect::<Vec<&[Float]>>(),
+                )?;
 
-                        Ok(dict.into_py(py))
-                    }
-                }
-            }
-            None => {
-                return Err(PyValueError::new_err("no configurations for generation"));
+                Ok(dict.into_py(py))
             }
         }
     }
 
     #[pyo3(
-        text_signature = "($self, expect_size, max_attempts, check_distance, distance_scale_factor, /, *cfgs)"
+        text_signature = "($self, expect_size, wyckoff_cfgs, *, max_attempts, check_distance, distance_scale_factor)"
     )]
     #[args(
+        expect_size,
+        wyckoff_cfgs,
+        "*",
         max_attempts = "None",
         check_distance = true,
-        distance_scale_factor = "0.1",
-        cfgs = "*"
+        distance_scale_factor = "0.1"
     )]
     fn gen_many(
         &self,
         py: Python<'_>,
         expect_size: usize,
+        wyckoff_cfgs: &PyTuple,
         max_attempts: Option<usize>,
         check_distance: bool,
         distance_scale_factor: Float,
-        cfgs: &PyTuple,
     ) -> PyResult<PyObject> {
         let mut cfgs: Vec<BTreeMap<String, Vec<String>>> =
-            match cfgs.extract() {
+            match wyckoff_cfgs.extract() {
                 Ok(m) => m,
                 Err(_) => return Err(PyValueError::new_err(
                     "can not converting `cfg` into dict, make sure the `cfgs` are tuple of dicts",

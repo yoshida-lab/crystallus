@@ -21,7 +21,7 @@ pub struct CrystalGeneratorError(pub String);
 
 impl fmt::Display for CrystalGeneratorError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(f, "crystal generator error: `{}`", self.0)
+        write!(f, "CrystalGeneratorError -- `{}`", self.0)
     }
 }
 

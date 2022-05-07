@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from copy import deepcopy
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -179,23 +179,29 @@ class CrystalGenerator(object):
     def n_jobs(self, n):
         self._cg.n_jobs = n
 
-    def gen_one(self, *, check_distance: bool = True, distance_scale_factor: float = 0.1, **cfg: Dict[str, Tuple[str]]):
+    def gen_one(
+        self,
+        wyckoff_cfg: Dict[str, Tuple[str]],
+        *,
+        check_distance: bool = True,
+        distance_scale_factor: float = 0.1,
+    ):
         """Try to generate a legal crystal structure with given configuration set.
 
         Parameters
         ----------
-        check_distance: bool, optional
-            Whether the atomic distance should be checked. default ``True``
-        distance_scale_factor : float, optional
-            Scale factor to determine the tolerance of atomic distances when distance checking. Unit is Å,
-            When ``check_distance`` is ``True``, Any structure has
-            all_atomic_distance < (A_atom_covalent_radius + B_atom_covalent_radius) * (1 - distance_scale_factor) will be rejected,
-            by default 0.1
-        **cfg: Dict[str, Tuple[str]]
+        wyckoff_cfg:
             Wyckoff Configuration set, which is a dict with format like:
             {"Li": ["a", "c"], "O": ["i"]}. Here, the "Li" is an available element
             symbol and ["a", "c"] is a list which contains coresponding Wyckoff
             letters. For convenience, dict will be sorted by keys.
+        check_distance:
+            Whether the atomic distance should be checked. default ``True``
+        distance_scale_factor:
+            Scale factor to determine the tolerance of atomic distances when distance checking. Unit is Å,
+            When ``check_distance`` is ``True``, Any structure has
+            all_atomic_distance < (A_atom_covalent_radius + B_atom_covalent_radius) * (1 - distance_scale_factor) will be rejected,
+            by default 0.1
 
         Returns
         -------
@@ -204,12 +210,12 @@ class CrystalGenerator(object):
             ``volume: float``, ``lattice: list``, ``wyckoff_letters: list``,
             and ``coords: list``.
         """
-        return self._cg.gen_one(check_distance, distance_scale_factor, **cfg)
+        return self._cg.gen_one(wyckoff_cfg, check_distance=check_distance, distance_scale_factor=distance_scale_factor)
 
     def gen_many(
         self,
         expect_size: int,
-        *cfgs: Dict[str, Tuple[str]],
+        *wyckoff_cfgs: Dict[str, Tuple[str]],
         max_attempts: Union[int, None] = None,
         check_distance: bool = True,
         distance_scale_factor: float = 0.1,
@@ -218,30 +224,30 @@ class CrystalGenerator(object):
 
         Parameters
         ----------
-        expect_size: int
+        expect_size:
             The expectation of the total amount of generated structures based on one Wyckoff.
             Whatever one generated structure is legal or not, **one attempt** will be consumed. 
             Please noted that the result could be empty when no structures matched the atomic distance conditions.
             When the number of generated structures are not fit your expectation too far away,
             try to give the parameter ``max_attempts`` a higher value..
-        max_attempts: Union[int, None], optional
-            Specify the max number of attempts in structure generation.
-            When the number of generated structures is small than ``expect_size``, new rounds of structure generation will be performed.
-            The generation will stop until the number of generated structures is more than ``expect_size, `` or the total attempts reach the ``max_attempts``.
-            Default ``None``, means ``max_attempts`` equal to parameter ``expect_size``.
-        check_distance: bool, optional
-            Whether the atomic distance should be checked. default ``True``
-        distance_scale_factor : float, optional
-            Scale factor to determine the tolerance of atomic distances when distance checking. Unit is Å,
-            When ``check_distance`` is ``True``, Any structure has
-            all_atomic_distance < (A_atom_covalent_radius + B_atom_covalent_radius) * (1 - distance_scale_factor) will be rejected,
-            by default 0.1
-        *cfgs: Dict[str, Tuple[str]]
+        *wyckoff_cfgs:
             A tuple with Wyckoff configuration set(s).
             Wyckoff Configuration set is a dict with format like: {"Li": ["a", "c"], "O": ["i"]}.
             Here, the "Li" is an available element symbol and ["a", "c"] is a list
             which contains coresponding Wyckoff letters. For convenience, dict will
-            be sorted by keys..
+            be sorted by keys.
+        max_attempts:
+            Specify the max number of attempts in structure generation.
+            When the number of generated structures is small than ``expect_size``, new rounds of structure generation will be performed.
+            The generation will stop until the number of generated structures is more than ``expect_size, `` or the total attempts reach the ``max_attempts``.
+            Default ``None``, means ``max_attempts`` equal to parameter ``expect_size``.
+        check_distance:
+            Whether the atomic distance should be checked. default ``True``
+        distance_scale_factor:
+            Scale factor to determine the tolerance of atomic distances when distance checking. Unit is Å,
+            When ``check_distance`` is ``True``, Any structure has
+            all_atomic_distance < (A_atom_covalent_radius + B_atom_covalent_radius) * (1 - distance_scale_factor) will be rejected,
+            by default 0.1
 
         Returns
         -------
@@ -252,20 +258,20 @@ class CrystalGenerator(object):
         """
         assert expect_size >= 1, 'attempts number must be greater than 1'
 
-        # if len(cfgs) > 0:
-        return self._cg.gen_many(
-            expect_size,
-            max_attempts,
-            check_distance,
-            distance_scale_factor,
-            *cfgs,
-        )
-        # return []
+        if len(wyckoff_cfgs) > 0:
+            return self._cg.gen_many(
+                expect_size,
+                wyckoff_cfgs,
+                max_attempts=max_attempts,
+                check_distance=check_distance,
+                distance_scale_factor=distance_scale_factor,
+            )
+        return []
 
     def gen_many_iter(
         self,
         expect_size: int,
-        *cfgs: Dict[str, Tuple[str]],
+        *wyckoff_cfgs: Dict[str, Tuple[str]],
         max_attempts: Union[int, None] = None,
         check_distance: bool = True,
         distance_scale_factor: float = 0.1,
@@ -292,7 +298,7 @@ class CrystalGenerator(object):
             When ``check_distance`` is ``True``, Any structure has
             all_atomic_distance < (A_atom_covalent_radius + B_atom_covalent_radius) * (1 - distance_scale_factor) will be rejected,
             by default 0.1
-        *cfgs: Dict[str, Tuple[str]]
+        *wyckoff_cfgs: Dict[str, Tuple[str]]
             A tuple with Wyckoff configuration set(s).
             Wyckoff Configuration set is a dict with format like: {"Li": ["a", "c"], "O": ["i"]}.
             Here, the "Li" is an available element symbol and ["a", "c"] is a list
@@ -306,13 +312,13 @@ class CrystalGenerator(object):
             and ``coords: list``.
         """
         assert expect_size >= 1, 'attempts number must be greater than 1'
-        for cfg in cfgs:
+        for cfg in wyckoff_cfgs:
             yield cfg, self._cg.gen_many(
                 expect_size,
-                max_attempts,
-                check_distance,
-                distance_scale_factor,
-                cfg,
+                (cfg,),
+                max_attempts=max_attempts,
+                check_distance=check_distance,
+                distance_scale_factor=distance_scale_factor,
             )
 
     def __repr__(self):

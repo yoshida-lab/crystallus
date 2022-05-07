@@ -279,8 +279,13 @@ impl<'a> Generator<EmpiricalGeneratorOption> for EmpiricalGenerator {
                         // α=β=γ<90°；a=b=c
                         for _ in 0..max_attempts_number {
                             // gen angles conditional
-                            let angles =
-                                vec![thread_rng().sample(Uniform::new(angle_range.0, 90.)); 3];
+                            let angles = vec![
+                                thread_rng().sample(Uniform::new(
+                                    angle_range.0,
+                                    angle_range.1.min(90.)
+                                ));
+                                3
+                            ];
                             let c: Float = get_multiplied_length(&vol, &angles).powf(1. / 3.);
 
                             if low_length < c && c < high_length {
@@ -474,9 +479,12 @@ impl<'a> Generator<EmpiricalGeneratorOption> for EmpiricalGenerator {
                     particles,
                 });
             }
-            return Err(CrystalGeneratorError(
-            "Atomic distance check failed for the randomly generated structure. If you tried many times and still get this error, please try to set `volume_of_cell` and/or `distance_scale_factor` bigger. (in crystal structure generation)".to_owned(),
-        ));
+            return Err(
+                CrystalGeneratorError(format!(
+                    "Atomic distance check failed for structure: \n\nLattice: {:#.4},\nAtoms: {:#.4}\nVolume: {:.4}\n\nIf you tried many times and still get this error, please try to set `volume_of_cell` and/or `distance_scale_factor` bigger. (in crystal structure generation)",
+                    lattice, particles, vol
+                ),
+            ));
         }
     }
 }
