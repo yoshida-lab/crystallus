@@ -15,6 +15,8 @@ Suppose we will use the Python 3.8 and the latest stable Rust on Linux.
 
 1. install libopenblas-dev and gfortran onto your Linux system
 
+    We have to compile this package with locally installed lapack packages until now. The final goal is to compile this package in conda.
+
     ```bash
     $> sudo apt update
     $> sudo apt install -y libopenblas-dev gfortran

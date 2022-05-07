@@ -531,7 +531,7 @@ mod tests {
         match tmp {
             Err(e) => assert_eq!(
                 format!("{}", e),
-                "crystal generator error: `space group number is illegal`"
+                "CrystalGeneratorError -- `space group number is illegal`"
             ),
             _ => assert!(false),
         }
@@ -554,7 +554,7 @@ mod tests {
         match tmp {
             Err(e) => assert_eq!(
                 format!("{}", e),
-                "crystal generator error: `angle range is illegal, sum of min bound must smaller than 360 degree`"
+                "CrystalGeneratorError -- `angle range is illegal, sum of min bound must smaller than 360 degree`"
             ),
             _ => assert!(false),
         }
