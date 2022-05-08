@@ -1,6 +1,38 @@
 name: tests
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - "env/**"
+      - "docs/**"
+      - "samples/**"
+      - "licenses/**"
+      - "hooks/**"
+      - ".**"
+      - "!.github/**"
+      - "**.md"
+      - "**.yml"
+      - "**.txt"
+      - "**.in"
+      - "**.cfg"
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - "env/**"
+      - "docs/**"
+      - "samples/**"
+      - "licenses/**"
+      - "hooks/**"
+      - ".**"
+      - "!.github/**"
+      - "**.md"
+      - "**.yml"
+      - "**.txt"
+      - "**.in"
+      - "**.cfg"
 
 jobs:
   build:
@@ -10,7 +42,6 @@ jobs:
       max-parallel: 6
       matrix:
         os: ["ubuntu-latest", "macos-latest"]
-        # os: ["ubuntu-latest"]
         python-version: [3.7, 3.8, 3.9]
 
     steps:
