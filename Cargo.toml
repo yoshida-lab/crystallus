@@ -5,7 +5,7 @@ homepage = 'https://github.com/yoshida-lab/crystallus'
 license = 'Apache-2'
 name = 'crystallus'
 publish = false
-version = '0.3.0-rc3'
+version = '0.3.0-rc4'
 
 [package.metadata.maturin]
 name = "crystallus.core"

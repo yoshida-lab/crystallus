@@ -56,21 +56,35 @@ impl WyckoffCfgGenerator {
             ));
         }
 
-        // get wyckoff letters and corresponding multiplicity
-        //                 [multiplicity, letter, reuse]
-        let mut candidate_pool: Vec<(usize, String, bool, Float)> = WY[spacegroup_num - 1]
-            .iter()
-            .map(|(letter, (multiplicity, reuse, _))| {
-                (*multiplicity, (*letter).clone(), *reuse, 1.)
-            })
-            .collect();
-
-        if let Some(prior) = priority {
-            // reset probability using `priority`
-            for (_, letter, _, proba) in candidate_pool.iter_mut() {
-                if prior.contains_key(letter) {
-                    *proba = prior[letter];
+        let candidate_pool = match priority {
+            // in this case, only set wyckoff letter will be used.
+            Some(prior) => {
+                // get wyckoff letters and corresponding multiplicity
+                //                 [multiplicity, letter, reuse, priority]
+                let mut candidate_pool: Vec<(usize, String, bool, Float)> = WY[spacegroup_num - 1]
+                    .iter()
+                    .map(|(letter, (multiplicity, reuse, _))| {
+                        (*multiplicity, (*letter).clone(), *reuse, 0.)
+                    })
+                    .collect();
+                // reset probability using `priority`
+                for (_, letter, _, proba) in candidate_pool.iter_mut() {
+                    if prior.contains_key(letter) {
+                        *proba = prior[letter];
+                    }
                 }
+                candidate_pool
+            }
+            None => {
+                // get wyckoff letters and corresponding multiplicity
+                //                 [multiplicity, letter, reuse, probability]
+                let candidate_pool: Vec<(usize, String, bool, Float)> = WY[spacegroup_num - 1]
+                    .iter()
+                    .map(|(letter, (multiplicity, reuse, _))| {
+                        (*multiplicity, (*letter).clone(), *reuse, 1.)
+                    })
+                    .collect();
+                candidate_pool
             }
         };
 
@@ -119,7 +133,7 @@ impl WyckoffCfgGenerator {
             }
 
             for (element, num) in composition_.iter_mut() {
-                // pool: [multiplicity, letter, reuse]
+                // pool: [multiplicity, letter, reuse, priority]
                 let pool: Vec<&(usize, String, bool, Float)> = self
                     .candidate_pool
                     .iter()
@@ -239,7 +253,17 @@ mod tests {
 
     #[test]
     fn wyckoff_cfg_gen_with_priority() -> Result<(), WyckoffCfgGeneratorError> {
-        let prior = HashMap::from_iter(vec![("e".to_owned(), 0.)].into_iter());
+        let prior = HashMap::from_iter(
+            vec![
+                ("f".to_owned(), 1.),
+                ("d".to_owned(), 1.),
+                ("c".to_owned(), 1.),
+                ("b".to_owned(), 1.),
+                ("a".to_owned(), 1.),
+                ("e".to_owned(), 0.),
+            ]
+            .into_iter(),
+        );
         let wy = WyckoffCfgGenerator::from_spacegroup_num(167, None, Some(prior))?; // R-3c
         let cfg = wy.gen(&BTreeMap::from_iter(
             vec![
