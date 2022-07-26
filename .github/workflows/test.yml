@@ -84,14 +84,16 @@ jobs:
       - name: Test python side
         shell: bash -l {0}
         run: |
+          rustc --version
           maturin --version
           maturin develop && pytest --benchmark-skip
 
       - name: Build wheel
         shell: bash -l {0}
         run: |
+          rustc --version
           maturin --version
-          maturin build -i $(which python) --release --no-sdist --strip
+          maturin build -i $(which python) --release --strip
 
       - name: Persist python wheel
         uses: actions/upload-artifact@v1
