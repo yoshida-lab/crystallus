@@ -84,11 +84,13 @@ jobs:
       - name: Test python side
         shell: bash -l {0}
         run: |
+          maturin --version
           maturin develop && pytest --benchmark-skip
 
       - name: Build wheel
         shell: bash -l {0}
         run: |
+          maturin --version
           maturin build -i $(which python) --release --no-sdist --strip
 
       - name: Persist python wheel
