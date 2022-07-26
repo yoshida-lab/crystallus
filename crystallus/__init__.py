@@ -25,4 +25,4 @@ __all__ = [
     "SpaceGroupDB",
 ]
 
-__version__ = "0.3.0.rc3"
+__version__ = "0.3.1.rc1"

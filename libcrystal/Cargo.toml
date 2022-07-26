@@ -4,7 +4,7 @@ edition = '2021'
 license = 'Apache-2'
 name = 'libcrystal'
 repository = 'https://github.com/yoshida-lab/crystallus'
-version = '0.3.0'
+version = '0.3.1'
 workspace = '..'
 
 # benchmark only works on nightly builds
@@ -21,12 +21,12 @@ name = 'libcrystal'
 
 [dependencies]
 lazy_static = '1.4.0'
-num-traits = '0.2.14'
+num-traits = '0.2.15'
 rand = '0.8.5'
 rand_distr = '0.4.3'
 rayon = '1.5.2'
-regex = '1.5.4'
-serde_json = '1.0.75'
+regex = '1.5.5'
+serde_json = '1.0.81'
 ndarray = {version = "^0.15.4", features = ['rayon', 'blas']}
 
 [dependencies.blas-src]

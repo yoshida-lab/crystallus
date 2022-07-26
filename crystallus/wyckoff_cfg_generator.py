@@ -41,13 +41,13 @@ class WyckoffCfgGenerator(object):
             from an Uniform distribution of the all available letters.
             Give this parameter will overwrite the corresponding priority list of Wyckoff letters.
             For example, space group 167 has Wyckoff letters `[a, b, c, d, e, f]`
-            By default, all their priority values are equal to `1`. Now, we want to lift the
-            priority of PW `a`, `b` and `d` and never use `e`, we can give parameter `priority`
-            a values like this: `{167: {a: 2, b: 2, d: 2, e: 0}}`. After that, the
-            new priority change to `{a: 2, b: 2, c: 1, d: 2, e: 0, f: 1}`. When generating,
-            the priority list will be normalized as this `{a: 2/8, b: 2/8, c: 1/8, d: 2/8 e: 0/8, f: 1/8}`.
+            If priority is None, all wyckoff letters will be selected under uniform distribution.
+            Now, we want to lift the priority `a`, `b` and `d`, we can give parameter `priority`
+            a values like this: `{167: {a: 2, b: 2, d: 2}}`. After that, the
+            new priority change to `{a: 2, b: 2, c: 0, d: 2, e: 0, f: 0}`. When generating,
+            the priority list will be normalized as this `{a: 2/6, b: 2/6, c: 0/6, d: 2/6 e: 0/6, f: 0/6}`.
         composition:
-            Composition of compounds in the primitive cell; should be formated
+            Composition of compounds in the primitive cell; should be formatted
             as {<element symbol>: <ratio in float>}.
         """
 

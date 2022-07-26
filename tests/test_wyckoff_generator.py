@@ -61,7 +61,7 @@ def test_wyckoff_gen_without_priority():
 
 
 def test_wyckoff_gen_with_priority():
-    wy = WyckoffCfgGenerator(dict(Ca=2, C=2, O=6), priority={167: {'e': 0}})
+    wy = WyckoffCfgGenerator(dict(Ca=2, C=2, O=6), priority={167: {'e': 0, 'd': 2, 'b': 2, 'a': 2, 'c': 2, 'f': 2}})
     cfg = wy.gen_one(spacegroup_num=167)
     assert cfg in [{'Ca': ['b'], 'C': ['a'], 'O': ['d']}, {'Ca': ['a'], 'C': ['b'], 'O': ['d']}]
     cfgs = wy.gen_many(1000, spacegroup_num=167)

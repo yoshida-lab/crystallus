@@ -48,6 +48,8 @@ Suppose we will use the Python 3.8 and the latest stable Rust on Linux.
     This is the last step.
     We use [pyo3](https://github.com/PyO3/pyo3) to provide you the python bindings and use [maturin](https://github.com/PyO3/maturin) to build our rust codes into the native dynamic library.
 
+    > Please confirm that you have installed the newest version of maturin.
+
     ```bash
      $> conda activate crystallus  # activate your python environment by name
      $> pip install -U maturin  # install maturin using pip
