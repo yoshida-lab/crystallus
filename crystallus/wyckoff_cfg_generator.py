@@ -47,7 +47,7 @@ class WyckoffCfgGenerator(object):
             new priority change to `{a: 2, b: 2, c: 0, d: 2, e: 0, f: 0}`. When generating,
             the priority list will be normalized as this `{a: 2/6, b: 2/6, c: 0/6, d: 2/6 e: 0/6, f: 0/6}`.
         composition:
-            Composition of compounds in the primitive cell; should be formated
+            Composition of compounds in the primitive cell; should be formatted
             as {<element symbol>: <ratio in float>}.
         """
 

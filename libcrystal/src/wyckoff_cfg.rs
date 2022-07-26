@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::{Float, SPG_TYPES, WY};
-use rand::{distributions::WeightedIndex, thread_rng, Rng};
+use rand::{distributions::WeightedIndex, seq::SliceRandom, thread_rng, Rng};
 use std::collections::{BTreeMap, HashMap};
 use std::{error, fmt};
 
@@ -115,15 +115,15 @@ impl WyckoffCfgGenerator {
         &self,
         composition: &BTreeMap<String, Float>,
     ) -> Result<BTreeMap<String, Vec<String>>, WyckoffCfgGeneratorError> {
-        let mut checker = false;
+        let mut empty_pool = false; // flag for the case of empty wyckoff pool but still have non-assigned atoms
         let mut ret_: BTreeMap<String, Vec<String>> = BTreeMap::new(); // such like: {Li: (b, a), O: (d,)}, where 'b', 'a', and 'd' are wyckoff letters
         let mut used: Vec<&String> = Vec::new(); // such like: [b, d]
-        let mut composition_: HashMap<String, Float> = composition
+        let mut composition_: Vec<(String, Float)> = composition
             .iter()
             .map(|(k, v)| (k.clone(), v * self.scale as Float))
             .collect();
         for _ in 0..self.max_recurrent {
-            if checker {
+            if empty_pool {
                 ret_ = BTreeMap::new(); // such like: {Li: (b, a), O: (d,)}, where 'b', 'a', and 'd' are wyckoff letters
                 used = Vec::new(); // such like: [b, d]
                 composition_ = composition
@@ -132,6 +132,11 @@ impl WyckoffCfgGenerator {
                     .collect();
             }
 
+            // shuffle elements in composition
+            let mut rng = rand::thread_rng();
+            composition_.shuffle(&mut rng);
+
+            // get each element and their # atoms in composition
             for (element, num) in composition_.iter_mut() {
                 // pool: [multiplicity, letter, reuse, priority]
                 let pool: Vec<&(usize, String, bool, Float)> = self
@@ -143,9 +148,9 @@ impl WyckoffCfgGenerator {
                     })
                     .collect();
 
-                let upper = pool.len();
-                if upper == 0 {
-                    checker = true;
+                // next try when there are no wyckoff letters for selection
+                if pool.len() == 0 {
+                    empty_pool = true;
                     continue;
                 }
                 // random sampling a suitable wyckoff letter
@@ -167,7 +172,7 @@ impl WyckoffCfgGenerator {
                     .push((*letter).clone());
             }
 
-            composition_.retain(|_, &mut num| num > 0.);
+            composition_.retain(|(_, num)| num > &0.);
             if composition_.is_empty() {
                 // resort wyckoff letters
                 // because iterator is lazy, we have to use for statement
@@ -176,6 +181,8 @@ impl WyckoffCfgGenerator {
                 }
                 return Ok(ret_);
             }
+            let mut rng = rand::thread_rng();
+            composition_.shuffle(&mut rng);
         }
 
         return Err(WyckoffCfgGeneratorError(
@@ -188,6 +195,7 @@ impl WyckoffCfgGenerator {
 mod tests {
     use super::*;
     use std::iter::FromIterator;
+
     #[test]
     fn wyckoff_cfg_generator() -> Result<(), WyckoffCfgGeneratorError> {
         let wy = WyckoffCfgGenerator::from_spacegroup_num(30, None, None)?; // Pnc2
