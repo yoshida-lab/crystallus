@@ -24,10 +24,14 @@ lazy_static = '1.4.0'
 num-traits = '0.2.15'
 rand = '0.8.5'
 rand_distr = '0.4.3'
-rayon = '1.5.2'
-regex = '1.5.5'
-serde_json = '1.0.81'
-ndarray = {version = "^0.15.4", features = ['rayon', 'blas']}
+rayon = '1.5.3'
+regex = '1.6.0'
+serde_json = '1.0.82'
+log = '0.4.17'
+
+[dependencies.ndarray]
+version = "^0.15.4"
+features = ['rayon', 'blas']
 
 [dependencies.blas-src]
 branch = "master"

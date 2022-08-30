@@ -25,6 +25,8 @@ use crate::wyckoff_cfg_gen::WyckoffCfgGenerator;
 
 #[pymodule]
 fn core(py: Python<'_>, m: &PyModule) -> PyResult<()> {
+    pyo3_log::init();
+
     // register classes
     m.add_class::<ParticleGenerator>()?;
     m.add_class::<CrystalGenerator>()?;

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::{Float, SPG_TYPES, WY};
+use log::info;
 use rand::{distributions::WeightedIndex, seq::SliceRandom, thread_rng, Rng};
 use std::collections::{BTreeMap, HashMap};
 use std::{error, fmt};
@@ -33,6 +34,7 @@ pub struct WyckoffCfgGenerator {
     // pool:       [multiplicity, letter, reuse, probability]
     candidate_pool: Vec<(usize, String, bool, Float)>,
     scale: u8,
+    verbose: bool,
 }
 
 impl WyckoffCfgGenerator {
@@ -49,6 +51,7 @@ impl WyckoffCfgGenerator {
         spacegroup_num: usize,
         max_recurrent: Option<u16>,
         priority: Option<HashMap<String, Float>>,
+        verbose: bool,
     ) -> Result<WyckoffCfgGenerator, WyckoffCfgGeneratorError> {
         if !(1..=230).contains(&spacegroup_num) {
             return Err(WyckoffCfgGeneratorError(
@@ -102,6 +105,7 @@ impl WyckoffCfgGenerator {
         Ok(WyckoffCfgGenerator {
             candidate_pool,
             max_recurrent: max_recurrent.unwrap_or(1000),
+            verbose,
             scale,
         })
     }
@@ -153,8 +157,10 @@ impl WyckoffCfgGenerator {
                     empty_pool = true;
                     continue;
                 }
+
                 // random sampling a suitable wyckoff letter
                 // form `pool` by their probability
+                // TODO: use `rand::distributions::WeightedIndex` to improve performance
                 let dist = WeightedIndex::new(pool.iter().map(|(_, _, _, proba)| *proba)).unwrap();
                 let n = thread_rng().sample(dist);
                 let (multiplicity, letter, reuse, _) = &pool[n];
@@ -163,6 +169,7 @@ impl WyckoffCfgGenerator {
                 if !reuse {
                     used.push(letter);
                 }
+
                 // atom numbers - multiplicity
                 *num -= *multiplicity as Float;
 
@@ -170,6 +177,11 @@ impl WyckoffCfgGenerator {
                 ret_.entry(element.clone())
                     .or_insert(vec![])
                     .push((*letter).clone());
+
+                // add logger
+                if self.verbose == true {
+                    info!("Wyckoff letter '{}' were selected for composition {:?} from pool<multiplicity, letter, reuseable, priority>:\n{:?}\n", letter, composition, pool);
+                }
             }
 
             composition_.retain(|(_, num)| num > &0.);
@@ -198,20 +210,20 @@ mod tests {
 
     #[test]
     fn wyckoff_cfg_generator() -> Result<(), WyckoffCfgGeneratorError> {
-        let wy = WyckoffCfgGenerator::from_spacegroup_num(30, None, None)?; // Pnc2
+        let wy = WyckoffCfgGenerator::from_spacegroup_num(30, None, None, false)?; // Pnc2
         assert_eq!(wy.scale, 1);
-        let wy = WyckoffCfgGenerator::from_spacegroup_num(65, None, None)?; // Cmmm
+        let wy = WyckoffCfgGenerator::from_spacegroup_num(65, None, None, false)?; // Cmmm
         assert_eq!(wy.scale, 2);
-        let wy = WyckoffCfgGenerator::from_spacegroup_num(167, None, None)?; // R-3c
+        let wy = WyckoffCfgGenerator::from_spacegroup_num(167, None, None, false)?; // R-3c
         assert_eq!(wy.scale, 1);
-        let wy = WyckoffCfgGenerator::from_spacegroup_num(227, None, None)?; // Fd-3m
+        let wy = WyckoffCfgGenerator::from_spacegroup_num(227, None, None, false)?; // Fd-3m
         assert_eq!(wy.scale, 4);
         Ok(())
     }
 
     #[test]
     fn wyckoff_cfg_gen_without_priority() -> Result<(), WyckoffCfgGeneratorError> {
-        let wy = WyckoffCfgGenerator::from_spacegroup_num(167, None, None)?; // R-3c
+        let wy = WyckoffCfgGenerator::from_spacegroup_num(167, None, None, false)?; // R-3c
         let cfg = wy.gen(&BTreeMap::from_iter(
             vec![
                 ("Ca".to_owned(), 2 as Float),
@@ -272,7 +284,7 @@ mod tests {
             ]
             .into_iter(),
         );
-        let wy = WyckoffCfgGenerator::from_spacegroup_num(167, None, Some(prior))?; // R-3c
+        let wy = WyckoffCfgGenerator::from_spacegroup_num(167, None, Some(prior), false)?; // R-3c
         let cfg = wy.gen(&BTreeMap::from_iter(
             vec![
                 ("Ca".to_owned(), 2 as Float),

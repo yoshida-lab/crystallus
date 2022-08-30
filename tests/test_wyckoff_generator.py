@@ -12,7 +12,8 @@ def test_wyckoff_gen_init():
 
 
 def test_wyckoff_gen_without_priority():
-    wy = WyckoffCfgGenerator(dict(Ca=2, C=2, O=6))
+    wy = WyckoffCfgGenerator(dict(Ca=2, C=2, O=6), verbose=False)
+
     cfg = wy.gen_one(spacegroup_num=167)
     assert cfg in [{
         'Ca': ['b'],

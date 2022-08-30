@@ -5,7 +5,7 @@ homepage = 'https://github.com/yoshida-lab/crystallus'
 license = 'Apache-2'
 name = 'crystallus'
 publish = false
-version = '0.3.1-rc1'
+version = '0.3.1-rc2'
 
 [package.metadata.maturin]
 name = "crystallus.core"
@@ -19,11 +19,14 @@ name = 'crystallus'
 
 [dependencies]
 itertools = '0.10.3'
-rayon = '1.5.2'
-either = "1.6.1"
+rayon = '1.5.3'
+either = "1.7.0"
+pyo3-log = "0.7.0"
+log = '0.4.17'
+env_logger = '0.9.0'
 
 [dependencies.pyo3]
-version = "0.16.4"
+version = "0.17.1"
 features = ["extension-module"]
 
 [dependencies.libcrystal]

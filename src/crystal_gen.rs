@@ -27,7 +27,7 @@ use libcrystal::{
 
 #[pyclass(module = "core")]
 #[pyo3(
-    text_signature = "(spacegroup_num, volume_of_cell, variance_of_volume, *, min_distance_tolerance, angle_range, angle_tolerance, max_recurrent, n_jobs)"
+    text_signature = "(spacegroup_num, volume_of_cell, variance_of_volume, *, min_distance_tolerance, angle_range, angle_tolerance, max_recurrent, n_jobs, verbose)"
 )]
 pub struct CrystalGenerator {
     _crystal_gen: Either<BaseGenerator, EmpiricalGenerator>,
@@ -155,7 +155,16 @@ impl CrystalGenerator {
         check_distance: bool,
         distance_scale_factor: Float,
     ) -> PyResult<PyObject> {
-        let mut cfg: BTreeMap<String, Vec<String>> = wyckoff_cfg.extract()?;
+        let mut cfg: BTreeMap<String, Vec<String>> = match wyckoff_cfg.extract() {
+            Ok(m) => m,
+            Err(err) => {
+                return Err(PyValueError::new_err(format!(
+                    "can not converting `cfg` from python, error is <{}>",
+                    err
+                )))
+            }
+        };
+        // let mut cfg: BTreeMap<String, Vec<String>> = wyckoff_cfg.extract()?;
         let mut elements: Vec<String> = Vec::new();
         let mut wyckoff_letters: Vec<String> = Vec::new();
         for (elem, letter) in cfg.iter_mut() {
@@ -229,8 +238,8 @@ impl CrystalGenerator {
         let mut cfgs: Vec<BTreeMap<String, Vec<String>>> =
             match wyckoff_cfgs.extract() {
                 Ok(m) => m,
-                Err(_) => return Err(PyValueError::new_err(
-                    "can not converting `cfg` into dict, make sure the `cfgs` are tuple of dicts",
+                Err(err) => return Err(PyValueError::new_err(
+                    format!("can not converting `cfg` into dict, make sure the `cfgs` are tuple of dicts, error msg is: <{}>", err),
                 )),
             };
         // parallel using rayon

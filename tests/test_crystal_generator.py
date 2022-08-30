@@ -22,7 +22,7 @@ from crystallus import CrystalGenerator
 
 def test_crystal_gen_one():
     cg = CrystalGenerator(207, 1000, 20)
-    structure = cg.gen_one(dict(C=('a', 'b'), O=('d')))
+    structure = cg.gen_one(dict(C=('a', 'b'), O=('d',)))
 
     assert set(structure.keys()) == {
         "lattice",
@@ -49,7 +49,7 @@ def test_crystal_gen_one_with_lattice():
         [0.00000000e+00, 0.00000000e+00, 1.07431550e+01],
     ])
     cg = CrystalGenerator(207, 1000, 0, lattice=lattice.matrix)
-    structure = cg.gen_one(dict(C=('a', 'b'), O=('d')))
+    structure = cg.gen_one(dict(C=('a', 'b'), O=('d',)))
 
     assert set(structure.keys()) == {
         "lattice",
@@ -92,7 +92,7 @@ def test_crystal_gen_one_with_template():
     """
     template = [('c', [0.2, 0., 0.0]), ('e', [0.4, 0., 0.0])]
     cg = CrystalGenerator(167, 1000, 10, angle_range=(40, 50), empirical_coords=template, empirical_coords_variance=0)
-    structure = cg.gen_one(dict(Li=('c'), P=('e')))
+    structure = cg.gen_one(dict(Li=('c',), P=('e',)))
 
     assert structure['wyckoff_letters'] == ['c'] * 4 + ['e'] * 6
     npt.assert_almost_equal(

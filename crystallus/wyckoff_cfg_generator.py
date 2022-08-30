@@ -14,6 +14,7 @@
 
 from copy import deepcopy
 from typing import Dict, Sequence, Union
+from xmlrpc.client import Boolean
 
 from .core import WyckoffCfgGenerator as _WYG
 
@@ -27,6 +28,7 @@ class WyckoffCfgGenerator(object):
         max_recurrent: int = 1_000,
         n_jobs: int = -1,
         priority: Union[Dict[int, Dict[str, float]], None] = None,
+        verbose: Boolean = False,
     ):
         """A generator for possible Wyckoff configuration generation.
 
@@ -51,7 +53,7 @@ class WyckoffCfgGenerator(object):
             as {<element symbol>: <ratio in float>}.
         """
 
-        self._wyg = _WYG(composition, max_recurrent=max_recurrent, n_jobs=n_jobs, priority=priority)
+        self._wyg = _WYG(composition, max_recurrent=max_recurrent, n_jobs=n_jobs, priority=priority, verbose=verbose)
         self._priority = priority
         self._composition = composition
 
@@ -63,6 +65,18 @@ class WyckoffCfgGenerator(object):
     def n_jobs(self):
         return self._wyg.n_jobs
 
+    @n_jobs.setter
+    def n_jobs(self, n):
+        self._wyg.n_jobs = n
+
+    @property
+    def verbose(self):
+        return self._wyg.verbose
+
+    @verbose.setter
+    def verbose(self, n):
+        self._wyg.verbose = n
+
     @property
     def composition(self):
         return deepcopy(self._composition)
@@ -70,10 +84,6 @@ class WyckoffCfgGenerator(object):
     @property
     def priority(self):
         return deepcopy(self._priority)
-
-    @n_jobs.setter
-    def n_jobs(self, n):
-        self._wyg.n_jobs = n
 
     def gen_one(self, *, spacegroup_num: int):
         """Try to generate a possible Wyckoff configuration under the given space group.
@@ -146,4 +156,5 @@ class WyckoffCfgGenerator(object):
             \n    n_jobs={self.n_jobs}\
             \n    priority={self._priority}\
             \n    composition={self._composition}\
+            \n    verbose={self.verbose}\
             \n)"

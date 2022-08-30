@@ -23,7 +23,7 @@ use std::collections::HashMap;
 use libcrystal::{Float, WyckoffCfgGenerator as wyckoff_cfg_gen};
 
 #[pyclass(module = "core")]
-#[pyo3(text_signature = "(max_recurrent, n_jobs, **composition)")]
+#[pyo3(text_signature = "(composition, *, max_recurrent, n_jobs, priority, verbose)")]
 pub struct WyckoffCfgGenerator {
     composition: BTreeMap<String, Float>,
     priority: HashMap<usize, HashMap<String, Float>>,
@@ -32,6 +32,8 @@ pub struct WyckoffCfgGenerator {
     n_jobs: i16,
     #[pyo3(get, set)]
     max_recurrent: u16,
+    #[pyo3(get, set)]
+    verbose: bool,
 }
 
 #[pymethods]
@@ -42,13 +44,15 @@ impl WyckoffCfgGenerator {
         "*",
         max_recurrent = "1_000",
         n_jobs = "-1",
-        priority = "None"
+        priority = "None",
+        verbose = false
     )]
     fn new(
         composition: &PyDict,
         max_recurrent: Option<u16>,
         n_jobs: Option<i16>,
         priority: Option<&PyDict>,
+        verbose: Option<bool>,
     ) -> PyResult<Self> {
         // convert Option<T: FromPyObject> -> Option<D>
         // if T.extract() return Err(e), pass this panic to python side
@@ -63,6 +67,7 @@ impl WyckoffCfgGenerator {
             priority,
             composition,
             n_jobs: n_jobs.unwrap_or(-1),
+            verbose: verbose.unwrap_or(false),
         })
     }
 
@@ -76,6 +81,7 @@ impl WyckoffCfgGenerator {
             spacegroup_num,
             Some(self.max_recurrent),
             priority,
+            self.verbose,
         );
         match wy {
             Ok(wy) => match wy.gen(&self.composition) {
@@ -101,7 +107,6 @@ impl WyckoffCfgGenerator {
         if self.n_jobs > 0 {
             std::env::set_var("RAYON_NUM_THREADS", self.n_jobs.to_string());
         }
-
         match spacegroup_num.len() {
             0 => {
                 return Err(PyValueError::new_err("no configurations for generation"));
@@ -116,11 +121,11 @@ impl WyckoffCfgGenerator {
                     sp_num,
                     Some(self.max_recurrent),
                     priority,
+                    self.verbose,
                 ) {
                     Ok(wy) => wy,
                     Err(e) => return Err(PyValueError::new_err(e.to_string())),
                 };
-
                 //Do works
                 let ret: Vec<BTreeMap<String, Vec<String>>> = py.allow_threads(|| {
                     (0..size)
@@ -135,7 +140,6 @@ impl WyckoffCfgGenerator {
                     .map(|cfg| cfg.into_py(py))
                     .collect();
                 std::env::set_var("RAYON_NUM_THREADS", "");
-
                 Ok(ret.into_py(py))
             }
             _ => {
@@ -150,6 +154,7 @@ impl WyckoffCfgGenerator {
                         *sp_num,
                         Some(self.max_recurrent),
                         priority,
+                        self.verbose,
                     ) {
                         Ok(wy) => wy,
                         Err(e) => return Err(PyValueError::new_err(e.to_string())),
